@@ -1,0 +1,172 @@
+import type { AdminRole } from '../types';
+
+export const permissions = [
+  'dashboard.view',
+  'tours.view',
+  'tours.create',
+  'tours.update',
+  'tours.delete',
+  'tours.publish',
+  'destinations.view',
+  'destinations.create',
+  'destinations.update',
+  'destinations.delete',
+  'destinations.publish',
+  'categories.view',
+  'categories.create',
+  'categories.update',
+  'categories.delete',
+  'bookings.view',
+  'bookings.update',
+  'bookings.delete',
+  'bookings.assign',
+  'payments.view',
+  'payments.create',
+  'payments.update',
+  'payments.refund',
+  'blog.view',
+  'blog.create',
+  'blog.update',
+  'blog.delete',
+  'blog.publish',
+  'gallery.view',
+  'gallery.upload',
+  'gallery.delete',
+  'media.view',
+  'media.upload',
+  'media.delete',
+  'testimonials.view',
+  'testimonials.create',
+  'testimonials.update',
+  'testimonials.delete',
+  'testimonials.publish',
+  'faqs.view',
+  'faqs.create',
+  'faqs.update',
+  'faqs.delete',
+  'homepage.view',
+  'homepage.update',
+  'messages.view',
+  'messages.update',
+  'messages.archive',
+  'settings.view',
+  'settings.update',
+  'admin_users.view',
+  'admin_users.create',
+  'admin_users.update',
+  'admin_users.delete',
+  'roles.view',
+  'roles.update',
+  'audit_logs.view',
+  'ai_conversations.view',
+  'ai_conversations.handoff',
+  'tour_matches.view',
+  'hubspot.sync'
+] as const;
+
+export type PermissionKey = (typeof permissions)[number];
+
+const contentPermissions: PermissionKey[] = [
+  'dashboard.view',
+  'tours.view',
+  'tours.create',
+  'tours.update',
+  'tours.publish',
+  'destinations.view',
+  'destinations.create',
+  'destinations.update',
+  'destinations.publish',
+  'categories.view',
+  'categories.create',
+  'categories.update',
+  'blog.view',
+  'blog.create',
+  'blog.update',
+  'blog.publish',
+  'gallery.view',
+  'gallery.upload',
+  'gallery.delete',
+  'media.view',
+  'media.upload',
+  'media.delete',
+  'testimonials.view',
+  'testimonials.create',
+  'testimonials.update',
+  'testimonials.publish',
+  'faqs.view',
+  'faqs.create',
+  'faqs.update',
+  'homepage.view',
+  'homepage.update',
+  'ai_conversations.view',
+  'tour_matches.view'
+];
+
+export const defaultRolePermissions: Record<AdminRole, PermissionKey[]> = {
+  super_admin: [...permissions],
+  admin: permissions.filter((permission) => !permission.startsWith('audit_logs')),
+  content_manager: contentPermissions,
+  booking_manager: [
+    'dashboard.view',
+    'bookings.view',
+    'bookings.update',
+    'bookings.assign',
+    'messages.view',
+    'messages.update',
+    'messages.archive'
+  ],
+  finance_manager: ['dashboard.view', 'bookings.view', 'payments.view', 'payments.create', 'payments.update', 'payments.refund'],
+  editor: [
+    'dashboard.view',
+    'tours.view',
+    'tours.create',
+    'tours.update',
+    'destinations.view',
+    'destinations.create',
+    'destinations.update',
+    'blog.view',
+    'blog.create',
+    'blog.update',
+    'gallery.view',
+    'media.view',
+    'testimonials.view',
+    'faqs.view',
+    'homepage.view',
+    'ai_conversations.view',
+    'tour_matches.view'
+  ],
+  viewer: [
+    'dashboard.view',
+    'tours.view',
+    'destinations.view',
+    'categories.view',
+    'bookings.view',
+    'payments.view',
+    'blog.view',
+    'gallery.view',
+    'media.view',
+    'testimonials.view',
+    'faqs.view',
+    'homepage.view',
+    'messages.view',
+    'settings.view',
+    'ai_conversations.view',
+    'tour_matches.view'
+  ]
+};
+
+export const adminRoles = Object.keys(defaultRolePermissions) as AdminRole[];
+
+/**
+ * Runtime, DB-overridable role→permission map. Initialized from the defaults
+ * above, then hydrated from the `role_permissions` table at server start and
+ * updated whenever an admin edits role permissions. The permission middleware
+ * reads this map, so saved permission changes take effect immediately.
+ */
+export const rolePermissions: Record<AdminRole, PermissionKey[]> = Object.fromEntries(
+  adminRoles.map((role) => [role, [...defaultRolePermissions[role]]])
+) as Record<AdminRole, PermissionKey[]>;
+
+export const applyRolePermissions = (role: AdminRole, nextPermissions: PermissionKey[]) => {
+  rolePermissions[role] = [...nextPermissions];
+};
