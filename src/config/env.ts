@@ -35,4 +35,8 @@ if (parsed.data.NODE_ENV === 'production') {
 }
 
 export const env = parsed.data;
-export const allowedOrigins = env.FRONTEND_URL.split(',').map((origin) => origin.trim());
+// Comma-separated list of allowed front-end origins for CORS. Trailing slashes are
+// stripped so e.g. "https://goldfinch.makutano.co.tz/" matches the browser's origin.
+export const allowedOrigins = env.FRONTEND_URL.split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
