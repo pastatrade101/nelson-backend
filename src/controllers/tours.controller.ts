@@ -9,6 +9,8 @@ import {
 } from '../utils/supabase-helpers';
 
 const select = '*, destinations(name,slug,country), tour_categories(name,slug)';
+// Detail view also embeds the day-by-day itinerary and what's included/excluded.
+const detailSelect = `${select}, itinerary_days(day_number,title,description,accommodation,meals,activities,image_url), tour_inclusions(title,sort_order), tour_exclusions(title,sort_order)`;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const listTours = asyncHandler(async (req, res) => {
@@ -27,7 +29,7 @@ export const getTour = asyncHandler(async (req, res) => {
   const column = uuidPattern.test(key) ? 'id' : 'slug';
   const { data, error } = await supabase
     .from('tours')
-    .select(select)
+    .select(detailSelect)
     .eq(column, key)
     .is('deleted_at', null)
     .maybeSingle();
