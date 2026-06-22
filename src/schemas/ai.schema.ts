@@ -13,13 +13,33 @@ export const aiLeadContextSchema = z
   })
   .partial();
 
+// Page context (lenient strings — public endpoint; ids are filtered, not trusted).
+export const aiPageContextSchema = z
+  .object({
+    path: z.string().max(300).optional(),
+    tour_id: z.string().max(200).optional(),
+    tour_slug: z.string().max(200).optional(),
+    destination_id: z.string().max(200).optional(),
+    departure_id: z.string().max(200).optional()
+  })
+  .partial();
+
 export const aiChatSchema = z.object({
   conversationId: z.string().uuid().optional(),
   lead: aiLeadContextSchema.optional(),
-  message: z.string().min(2).max(2000)
+  message: z.string().min(1).max(2000),
+  page_context: aiPageContextSchema.optional(),
+  shortlist: z.array(z.string().max(200)).max(50).optional(),
+  turnstile_token: z.string().max(4000).optional(),
+  idempotency_key: z.string().uuid().optional()
 });
 
 export const aiHandoffSchema = z.object({
   notes: z.string().max(2000).optional(),
   stage: z.string().max(80).default('New Lead')
+});
+
+export const aiCreateBookingSchema = z.object({
+  confirmed_by_user: z.literal(true),
+  idempotency_key: z.string().uuid()
 });

@@ -30,6 +30,10 @@ declare global {
   namespace Express {
     interface Request {
       user?: AuthTokenPayload;
+      // AI advisor abuse-protection context (CGNAT-aware, §6).
+      aiSessionId?: string;
+      aiIpHash?: string;
+      aiTurnstileVerified?: boolean;
     }
   }
 }

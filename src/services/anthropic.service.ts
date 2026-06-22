@@ -37,6 +37,8 @@ export type ToolUse = {
 export type AnthropicResult = {
   text: string;
   toolUses: ToolUse[];
+  /** Raw assistant content blocks — needed to replay the turn in a tool loop. */
+  content: Array<Record<string, unknown>>;
   stopReason: string | null;
   usage: AiUsage;
   model: string;
@@ -49,6 +51,8 @@ export type CreateMessageParams = {
   system?: string;
   /** Pass the Goldfinch tool set by default; set [] to disable tools. */
   tools?: ReadonlyArray<Record<string, unknown>>;
+  /** Per-request context (lead/CMS/page) appended as an UNCACHED system block. */
+  dynamicContext?: string;
   maxTokens?: number;
   temperature?: number;
 };
@@ -73,13 +77,19 @@ const headers = (): Record<string, string> => {
  * Build the `system` param as cache-marked blocks. The stable prefix (brand,
  * safety, booking rules) carries cache_control so it bills at ~10% on reuse.
  */
-const buildSystem = (systemText: string): Array<Record<string, unknown>> => {
+const buildSystem = (systemText: string, dynamicContext?: string): Array<Record<string, unknown>> => {
   const block: Record<string, unknown> = { type: 'text', text: systemText };
   if (env.AI_USE_PROMPT_CACHING) {
     block.cache_control =
       env.AI_PROMPT_CACHE_TTL === '1h' ? { type: 'ephemeral', ttl: '1h' } : { type: 'ephemeral' };
   }
-  return [block];
+  const blocks = [block];
+  // Dynamic per-request context is a SEPARATE, uncached block so the stable
+  // prefix above keeps its cache breakpoint warm.
+  if (dynamicContext && dynamicContext.trim()) {
+    blocks.push({ type: 'text', text: dynamicContext });
+  }
+  return blocks;
 };
 
 /** Attach a cache breakpoint to the last tool so the tool defs cache too. */
@@ -98,7 +108,7 @@ const buildBody = (params: CreateMessageParams, stream: boolean): Record<string,
   const body: Record<string, unknown> = {
     model: params.model,
     max_tokens: params.maxTokens ?? env.AI_MAX_OUTPUT_TOKENS,
-    system: buildSystem(params.system ?? GOLDFINCH_ADVISOR_SYSTEM_PROMPT),
+    system: buildSystem(params.system ?? GOLDFINCH_ADVISOR_SYSTEM_PROMPT, params.dynamicContext),
     messages: params.messages
   };
   if (typeof params.temperature === 'number') body.temperature = params.temperature;
@@ -157,6 +167,7 @@ export const createMessage = async (params: CreateMessageParams): Promise<Anthro
   return {
     text,
     toolUses,
+    content,
     stopReason: typeof data.stop_reason === 'string' ? data.stop_reason : null,
     usage: mapUsage(data.usage as Record<string, unknown> | undefined),
     model: typeof data.model === 'string' ? data.model : params.model
