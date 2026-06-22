@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import { semanticTourScores } from './ai-retrieval.service';
 
 // ----------------------------------------------------------------------------
 // Native tool implementations (§3.4, §9, §11, §13, §25). The model orchestrates
@@ -19,6 +20,8 @@ export type AdvisorContext = {
   sessionId?: string;
   ipHash?: string;
   pageContext?: PageContext;
+  /** Raw user query — used for the optional semantic tour boost (§9/§10). */
+  queryText?: string;
 };
 
 export type Recommendation = {
@@ -99,6 +102,10 @@ export const searchTours = async (intent: ToursIntent, ctx: AdvisorContext): Pro
   const wantExperience = norm(intent.experience);
   const travelers = intent.travelers ?? 1;
 
+  // Optional semantic boost (§9/§10) — blends pgvector similarity with the
+  // deterministic score. Empty map when embeddings are disabled (no-op).
+  const semantic = ctx.queryText ? await semanticTourScores(ctx.queryText) : new Map<string, number>();
+
   const scored = data.map((row): Recommendation => {
     const tour = row as Record<string, unknown>;
     const dest = (Array.isArray(tour.destinations) ? tour.destinations[0] : tour.destinations) as
@@ -155,7 +162,12 @@ export const searchTours = async (intent: ToursIntent, ctx: AdvisorContext): Pro
 
     if (!avail.hasDeparture) limitations.push('No fixed departure yet — can be arranged as a tailor-made trip');
 
-    const score = Math.min(100, Math.round((raw / MAX_RAW_SCORE) * 100));
+    let score = Math.min(100, Math.round((raw / MAX_RAW_SCORE) * 100));
+    const sim = semantic.get(String(tour.id));
+    if (sim != null) {
+      score = Math.min(100, Math.round(score * 0.8 + sim * 100 * 0.2));
+      if (sim >= 0.8 && reasons.length < 3) reasons.push('Closely matches what you described');
+    }
     return {
       tour_id: String(tour.id),
       title: String(tour.title ?? ''),

@@ -7,6 +7,7 @@ import {
   type AdvisorTurnInput,
   type AdvisorTurnResult
 } from '../services/ai-travel-advisor.service';
+import { embedCmsContent } from '../services/ai-retrieval.service';
 import { asyncHandler } from '../utils/async-handler';
 import { sendSuccess } from '../utils/api-response';
 import { getRecordById, listRecords } from '../utils/supabase-helpers';
@@ -109,6 +110,11 @@ export const getAiConversation = asyncHandler(async (req, res) => {
 export const handoffAiConversation = asyncHandler(async (req, res) => {
   const data = await handoffConversation(req.params.id, req, req.body.notes);
   return sendSuccess(res, 'AI conversation marked for advisor handoff.', data);
+});
+
+export const refreshEmbeddings = asyncHandler(async (_req, res) => {
+  const data = await embedCmsContent();
+  return sendSuccess(res, data.enabled ? 'CMS embeddings refreshed.' : 'Embedding provider is not configured.', data);
 });
 
 export const getTourMatches = asyncHandler(async (req, res) => {

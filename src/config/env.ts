@@ -42,8 +42,9 @@ const envSchema = z.object({
   ANTHROPIC_VERSION: z.string().default('2023-06-01'),
   // Semantic layer (pgvector). Provider is pluggable; dimension must match the
   // cms_embeddings / ai_answer_cache vector(N) columns in the v2 migration.
-  AI_EMBEDDING_PROVIDER: z.string().optional().or(z.literal('')),
+  AI_EMBEDDING_PROVIDER: z.string().optional().or(z.literal('')), // 'openai' | 'voyage'
   AI_EMBEDDING_MODEL: z.string().optional().or(z.literal('')),
+  AI_EMBEDDING_API_KEY: z.string().optional().or(z.literal('')),
   AI_EMBEDDING_DIMENSIONS: z.coerce.number().int().default(1536),
   AI_SEMANTIC_CACHE_THRESHOLD: z.coerce.number().default(0.92),
   // Abuse protection (CGNAT-aware): Turnstile is the primary control.

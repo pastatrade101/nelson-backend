@@ -7,6 +7,7 @@ import { createMessage, type AnthropicMessage, type AnthropicRole } from './anth
 import { budgetFallbackMessage, getBudgetStatus } from './ai-cost-control.service';
 import { classifyMessage } from './ai-router.service';
 import { executeTool, getSettings, searchTours, type AdvisorContext, type PageContext, type Recommendation } from './ai-tools.service';
+import { lookupAnswerCache, searchFaqSemantic, storeAnswerCache } from './ai-retrieval.service';
 import { logUsage, type AiUsage, type RequestStatus } from './ai-usage.service';
 import { syncToHubSpot } from './hubspot.service';
 
@@ -186,7 +187,8 @@ export const runAdvisorTurn = async (input: AdvisorTurnInput): Promise<AdvisorTu
     conversationId,
     sessionId: input.sessionId,
     ipHash: input.ipHash,
-    pageContext: input.pageContext
+    pageContext: input.pageContext,
+    queryText: input.message
   };
 
   await saveMessage(conversationId, 'user', input.message);
@@ -274,13 +276,35 @@ export const runAdvisorTurn = async (input: AdvisorTurnInput): Promise<AdvisorTu
         : 'I can help you find the right trip. Tell me your destination, dates, group size and budget.';
       return finalize(reply, { recommendations: recs, routeType: decision.route, aiCalled: false, status: 'skipped_no_ai_needed' });
     }
-    // cms_faq_no_ai
+    // cms_faq_no_ai — try a semantic FAQ match first (§10), else generic.
+    const faqMatch = await searchFaqSemantic(input.message);
+    if (faqMatch) {
+      let answer = faqMatch.content;
+      try {
+        const { data: faqRow } = await supabase.from('faqs').select('answer').eq('id', faqMatch.sourceId).maybeSingle();
+        const a = (faqRow as { answer?: string } | null)?.answer;
+        if (a) answer = a;
+      } catch {
+        // fall back to the embedded content
+      }
+      return finalize(answer, { routeType: decision.route, aiCalled: false, status: 'skipped_no_ai_needed' });
+    }
     const s = (await getSettings()).output as Record<string, unknown>;
     const reply = `Booking with Goldfinch is simple: tell us what you want, we tailor a plan and send a booking request for review — no payment to start. ${s.response_time ?? 'A specialist will follow up shortly.'}`;
     return finalize(reply, { routeType: decision.route, aiCalled: false, status: 'skipped_no_ai_needed' });
   }
 
-  // 3) Budget exhausted but AI requested → template/fallback (semantic cache lands in Phase 3).
+  // 2b) Semantic answer cache (§10): for general questions, a close enough
+  // cached answer skips Anthropic entirely. Skipped for trip-match / booking
+  // routes, which need live data.
+  if (decision.route === 'ai_simple') {
+    const cached = await lookupAnswerCache(input.message);
+    if (cached) {
+      return finalize(cached.answer, { routeType: 'semantic_cache_hit_no_ai', aiCalled: false, status: 'semantic_cache_hit' });
+    }
+  }
+
+  // 3) Budget exhausted but AI requested → template/fallback (semantic cache already tried above).
   if (budget.tier === 'cache_template_only') {
     return finalize(budgetFallbackMessage, { routeType: 'degraded', aiCalled: false, status: 'degraded' });
   }
@@ -343,6 +367,14 @@ export const runAdvisorTurn = async (input: AdvisorTurnInput): Promise<AdvisorTu
   }
 
   const reply = finalText.trim() || 'Let me connect you with a Goldfinch specialist who can help further.';
+
+  // Cache general, reusable answers (never trip/price/availability content) so
+  // the next similar question skips Anthropic (§10). storeAnswerCache itself
+  // filters volatile content and is a no-op when embeddings are disabled.
+  if (decision.route === 'ai_simple' && !recommendations.length && !degraded && finalText.trim()) {
+    await storeAnswerCache(input.message, reply, 'ai_simple');
+  }
+
   return finalize(reply, {
     recommendations,
     routeType: degraded ? 'degraded' : decision.route,

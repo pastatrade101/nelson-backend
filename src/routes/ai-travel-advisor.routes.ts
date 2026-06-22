@@ -5,7 +5,8 @@ import {
   getAiConversation,
   getTourMatches,
   handoffAiConversation,
-  listAiConversations
+  listAiConversations,
+  refreshEmbeddings
 } from '../controllers/ai-travel-advisor.controller';
 import { aiChatGuard, aiChatLimiter } from '../middleware/ai-guard.middleware';
 import { authenticate } from '../middleware/auth.middleware';
@@ -31,5 +32,6 @@ router.get('/conversations', authenticate, requirePermission('ai_conversations.v
 router.get('/conversations/:id', authenticate, requirePermission('ai_conversations.view'), getAiConversation);
 router.post('/conversations/:id/handoff', authenticate, requirePermission('ai_conversations.handoff'), validate({ body: aiHandoffSchema }), handoffAiConversation);
 router.get('/tour-matches/:conversationId', authenticate, requirePermission('tour_matches.view'), getTourMatches);
+router.post('/embeddings/refresh', authenticate, requirePermission('ai_conversations.view'), refreshEmbeddings);
 
 export default router;
