@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
 import {
@@ -7,10 +8,11 @@ import {
   type AdvisorTurnInput,
   type AdvisorTurnResult
 } from '../services/ai-travel-advisor.service';
+import { getUsageStats } from '../services/ai-cost-control.service';
 import { embedCmsContent } from '../services/ai-retrieval.service';
 import { asyncHandler } from '../utils/async-handler';
-import { sendSuccess } from '../utils/api-response';
-import { getRecordById, listRecords } from '../utils/supabase-helpers';
+import { AppError, sendSuccess } from '../utils/api-response';
+import { listRecords } from '../utils/supabase-helpers';
 
 const buildTurnInput = (req: Request): AdvisorTurnInput => {
   const body = req.body as {
@@ -104,7 +106,59 @@ export const listAiConversations = asyncHandler(async (req, res) => {
 });
 
 export const getAiConversation = asyncHandler(async (req, res) => {
-  return getRecordById(res, 'ai_conversations', req.params.id);
+  const id = req.params.id;
+  const [conv, messages, lead, matches] = await Promise.all([
+    supabase.from('ai_conversations').select('*').eq('id', id).maybeSingle(),
+    supabase.from('ai_messages').select('id,role,content,created_at').eq('conversation_id', id).order('created_at', { ascending: true }),
+    supabase.from('ai_lead_context').select('*').eq('conversation_id', id).maybeSingle(),
+    supabase.from('tour_match_results').select('*, tours(title,slug,price_from,currency)').eq('conversation_id', id).order('match_score', { ascending: false })
+  ]);
+  if (!conv.data) throw new AppError('Conversation not found.', 404);
+
+  let usage = { calls: 0, cost: 0 };
+  try {
+    const { data } = await supabase.from('ai_usage_logs').select('estimated_cost_usd').eq('conversation_id', id);
+    const list = (data ?? []) as Array<{ estimated_cost_usd?: number }>;
+    usage = { calls: list.length, cost: Math.round(list.reduce((t, r) => t + Number(r.estimated_cost_usd ?? 0), 0) * 1e6) / 1e6 };
+  } catch {
+    // best effort
+  }
+
+  return sendSuccess(res, 'Conversation fetched.', {
+    conversation: conv.data,
+    messages: messages.data ?? [],
+    lead_context: lead.data ?? null,
+    tour_matches: matches.data ?? [],
+    usage
+  });
+});
+
+export const updateAiConversationStatus = asyncHandler(async (req, res) => {
+  const { status, lead_status } = req.body as { status?: string; lead_status?: string };
+  const update: Record<string, unknown> = {};
+  if (status) update.status = status;
+  if (lead_status) update.lead_status = lead_status;
+  if (!Object.keys(update).length) throw new AppError('No status fields provided.', 400);
+
+  const { data, error } = await supabase.from('ai_conversations').update(update).eq('id', req.params.id).select('id,status,lead_status').single();
+  if (error) throw new AppError('Unable to update conversation.', 500, [error]);
+  return sendSuccess(res, 'Conversation updated.', data);
+});
+
+export const adminCreateBooking = asyncHandler(async (req, res) => {
+  const idempotencyKey = (req.body?.idempotency_key as string) || randomUUID();
+  const data = await createBookingRequestForConversation(req.params.id, idempotencyKey);
+  return sendSuccess(res, 'Booking request created.', data, 201);
+});
+
+export const getAiUsage = asyncHandler(async (_req, res) => {
+  const data = await getUsageStats();
+  return sendSuccess(res, 'AI usage stats fetched.', data);
+});
+
+export const getAiEvals = asyncHandler(async (_req, res) => {
+  const { data } = await supabase.from('ai_eval_runs').select('*').order('run_at', { ascending: false }).limit(50);
+  return sendSuccess(res, 'AI eval runs fetched.', data ?? []);
 });
 
 export const handoffAiConversation = asyncHandler(async (req, res) => {

@@ -43,3 +43,16 @@ export const aiCreateBookingSchema = z.object({
   confirmed_by_user: z.literal(true),
   idempotency_key: z.string().uuid()
 });
+
+// Admin: update conversation pipeline status / lead status.
+export const aiStatusSchema = z
+  .object({
+    status: z.string().max(40).optional(),
+    lead_status: z.string().max(40).optional()
+  })
+  .refine((v) => v.status || v.lead_status, { message: 'Provide status or lead_status.' });
+
+// Admin: create a booking request from a conversation.
+export const aiAdminBookingSchema = z.object({
+  idempotency_key: z.string().uuid().optional()
+});
