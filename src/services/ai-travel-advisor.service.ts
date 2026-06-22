@@ -200,7 +200,7 @@ export const runAdvisorTurn = async (input: AdvisorTurnInput): Promise<AdvisorTu
 
   const finalize = async (
     reply: string,
-    opts: { recommendations?: Recommendation[]; routeType: string; aiCalled: boolean; model?: string; status: RequestStatus; usage?: AiUsage; cost?: number }
+    opts: { recommendations?: Recommendation[]; routeType: string; aiCalled: boolean; model?: string; status: RequestStatus; usage?: AiUsage; cost?: number; errorMessage?: string }
   ): Promise<AdvisorTurnResult> => {
     await saveMessage(conversationId, 'assistant', reply);
     const recommendations = opts.recommendations ?? [];
@@ -214,7 +214,8 @@ export const runAdvisorTurn = async (input: AdvisorTurnInput): Promise<AdvisorTu
       routeType: opts.routeType,
       usage: opts.usage,
       estimatedCostUsd: opts.usage ? undefined : opts.cost ?? 0,
-      requestStatus: opts.status
+      requestStatus: opts.status,
+      errorMessage: opts.errorMessage ?? null
     });
 
     let leadContextRow: Record<string, unknown> = {};
@@ -359,10 +360,14 @@ export const runAdvisorTurn = async (input: AdvisorTurnInput): Promise<AdvisorTu
       finalText = res.text;
       break;
     }
-  } catch {
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown Anthropic error';
+    // Surface the real cause in server logs + ai_usage_logs.error_message so the
+    // generic visitor fallback can be diagnosed (bad key, model id, 4xx, etc.).
+    console.error(`[advisor] Anthropic call failed (model=${model}): ${errorMessage}`);
     return finalize(
       "I'm having trouble reaching our planning engine right now. A Goldfinch specialist can help you directly — would you like to continue on WhatsApp?",
-      { routeType: decision.route, aiCalled: true, model, status: 'failed', usage: totalUsage }
+      { routeType: decision.route, aiCalled: true, model, status: 'failed', usage: totalUsage, errorMessage }
     );
   }
 
