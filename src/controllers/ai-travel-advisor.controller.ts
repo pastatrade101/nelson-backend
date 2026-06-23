@@ -178,9 +178,23 @@ export const handoffAiConversation = asyncHandler(async (req, res) => {
   return sendSuccess(res, 'AI conversation marked for advisor handoff.', data);
 });
 
+// Backfilling embeds every published tour/destination/FAQ via the embedding
+// provider — too slow for a single HTTP request (reverse proxies time out → 502).
+// So we kick it off in the background and return immediately. The long-running
+// Express process keeps working after the response is sent.
+let embeddingsRunning = false;
 export const refreshEmbeddings = asyncHandler(async (_req, res) => {
-  const data = await embedCmsContent();
-  return sendSuccess(res, data.enabled ? 'CMS embeddings refreshed.' : 'Embedding provider is not configured.', data);
+  if (embeddingsRunning) {
+    return sendSuccess(res, 'Embeddings refresh is already running.', { started: false, alreadyRunning: true }, 202);
+  }
+  embeddingsRunning = true;
+  void embedCmsContent()
+    .then((result) => console.log('[embeddings] refresh complete:', result))
+    .catch((err) => console.error('[embeddings] refresh failed:', (err as Error).message))
+    .finally(() => {
+      embeddingsRunning = false;
+    });
+  return sendSuccess(res, 'Embeddings refresh started — running in the background.', { started: true, alreadyRunning: false }, 202);
 });
 
 export const getTourMatches = asyncHandler(async (req, res) => {
