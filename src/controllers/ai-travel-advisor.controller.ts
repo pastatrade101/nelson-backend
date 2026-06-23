@@ -10,6 +10,8 @@ import {
 } from '../services/ai-travel-advisor.service';
 import { getUsageStats } from '../services/ai-cost-control.service';
 import { embedCmsContent } from '../services/ai-retrieval.service';
+import { runEvals } from '../services/ai-eval.service';
+import { purgeAnonymousConversations } from '../services/ai-retention.service';
 import { asyncHandler } from '../utils/async-handler';
 import { AppError, sendSuccess } from '../utils/api-response';
 import { listRecords } from '../utils/supabase-helpers';
@@ -159,6 +161,16 @@ export const getAiUsage = asyncHandler(async (_req, res) => {
 export const getAiEvals = asyncHandler(async (_req, res) => {
   const { data } = await supabase.from('ai_eval_runs').select('*').order('run_at', { ascending: false }).limit(50);
   return sendSuccess(res, 'AI eval runs fetched.', data ?? []);
+});
+
+export const runAiEvals = asyncHandler(async (_req, res) => {
+  const data = await runEvals();
+  return sendSuccess(res, 'AI eval sweep complete.', data);
+});
+
+export const purgeAiRetention = asyncHandler(async (_req, res) => {
+  const data = await purgeAnonymousConversations();
+  return sendSuccess(res, 'Anonymous conversation purge complete.', data);
 });
 
 export const handoffAiConversation = asyncHandler(async (req, res) => {
