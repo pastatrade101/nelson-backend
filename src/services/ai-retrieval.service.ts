@@ -13,34 +13,41 @@ export const embeddingEnabled = (): boolean => Boolean(env.AI_EMBEDDING_PROVIDER
 // Never cache anything that must stay live (§10).
 const VOLATILE = /(\$|usd|tzs|ksh|price|pricing|cost|per person|deposit|available|availability|\bdate\b|departure|slot|book now|discount)/i;
 
-type EmbedResponse = { data?: Array<{ embedding?: number[] }> };
+type EmbedResponse = { data?: Array<{ embedding?: number[] }>; error?: { message?: string } };
+
+// fetch() has no default timeout — a stalled embedding request would hang the
+// whole backfill. Abort after 20s so a bad call fails fast (returns null).
+const postJson = async (url: string, key: string, body: unknown): Promise<EmbedResponse | null> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    const data = (await res.json().catch(() => null)) as EmbedResponse | null;
+    if (data?.error?.message) console.error('[embeddings] provider error:', data.error.message);
+    return data;
+  } catch (err) {
+    console.error('[embeddings] request failed:', (err as Error).message);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+};
 
 const callProvider = async (text: string): Promise<number[] | null> => {
   const provider = (env.AI_EMBEDDING_PROVIDER || '').toLowerCase();
   const key = env.AI_EMBEDDING_API_KEY;
   if (!provider || !key) return null;
 
-  try {
-    if (provider === 'voyage') {
-      const res = await fetch('https://api.voyageai.com/v1/embeddings', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model: env.AI_EMBEDDING_MODEL || 'voyage-3', input: [text] })
-      });
-      const data = (await res.json().catch(() => null)) as EmbedResponse | null;
-      return data?.data?.[0]?.embedding ?? null;
-    }
-    // default: openai-compatible
-    const res = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model: env.AI_EMBEDDING_MODEL || 'text-embedding-3-small', input: text })
-    });
-    const data = (await res.json().catch(() => null)) as EmbedResponse | null;
-    return data?.data?.[0]?.embedding ?? null;
-  } catch {
-    return null;
-  }
+  const data =
+    provider === 'voyage'
+      ? await postJson('https://api.voyageai.com/v1/embeddings', key, { model: env.AI_EMBEDDING_MODEL || 'voyage-3', input: [text] })
+      : await postJson('https://api.openai.com/v1/embeddings', key, { model: env.AI_EMBEDDING_MODEL || 'text-embedding-3-small', input: text });
+  return data?.data?.[0]?.embedding ?? null;
 };
 
 /** Embed text; returns null (no-op) on any failure or dimension mismatch. */
@@ -143,7 +150,13 @@ export const embedCmsContent = async (): Promise<{ embedded: number; skipped: nu
   let embedded = 0;
   let skipped = 0;
 
-  const bump = (ok: boolean) => (ok ? (embedded += 1) : (skipped += 1));
+  let processed = 0;
+  let total = 0;
+  const bump = (ok: boolean) => {
+    ok ? (embedded += 1) : (skipped += 1);
+    processed += 1;
+    if (processed % 10 === 0 || processed === total) console.log(`[embeddings] ${processed}/${total} (embedded ${embedded}, skipped ${skipped})`);
+  };
 
   const { data: tours } = await supabase
     .from('tours')
@@ -151,6 +164,12 @@ export const embedCmsContent = async (): Promise<{ embedded: number; skipped: nu
     .eq('status', 'published')
     .is('deleted_at', null)
     .limit(500);
+  const { data: destinations } = await supabase.from('destinations').select('id,name,country,description,short_description').limit(500);
+  const { data: faqs } = await supabase.from('faqs').select('id,question,answer').limit(500);
+
+  total = (tours?.length ?? 0) + (destinations?.length ?? 0) + (faqs?.length ?? 0);
+  console.log(`[embeddings] start: ${tours?.length ?? 0} tours, ${destinations?.length ?? 0} destinations, ${faqs?.length ?? 0} faqs (provider=${env.AI_EMBEDDING_PROVIDER})`);
+
   for (const t of (tours ?? []) as Array<Record<string, unknown>>) {
     const dest = (Array.isArray(t.destinations) ? t.destinations[0] : t.destinations) as { name?: string; country?: string } | null;
     const cat = (Array.isArray(t.tour_categories) ? t.tour_categories[0] : t.tour_categories) as { name?: string } | null;
@@ -160,13 +179,11 @@ export const embedCmsContent = async (): Promise<{ embedded: number; skipped: nu
     bump(await upsertEmbedding('tour', String(t.id), content));
   }
 
-  const { data: destinations } = await supabase.from('destinations').select('id,name,country,description,short_description').limit(500);
   for (const d of (destinations ?? []) as Array<Record<string, unknown>>) {
     const content = [d.name, d.country, d.short_description, d.description].filter(Boolean).join(' — ').slice(0, 4000);
     bump(await upsertEmbedding('destination', String(d.id), content));
   }
 
-  const { data: faqs } = await supabase.from('faqs').select('id,question,answer').limit(500);
   for (const f of (faqs ?? []) as Array<Record<string, unknown>>) {
     const content = [f.question, f.answer].filter(Boolean).join(' — ').slice(0, 4000);
     bump(await upsertEmbedding('faq', String(f.id), content));
