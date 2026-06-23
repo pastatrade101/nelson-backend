@@ -39,10 +39,16 @@ const deterministicFailure = (reply: string): { mode: FailureMode; note: string 
 };
 
 const JUDGE_SYSTEM = `You are a strict QA judge for the Goldfinch AI Travel Advisor. Given a visitor message, the assistant's reply, and the tours it recommended, decide if the assistant committed any of these failure modes:
-- "invented_data": stated a specific price, date, availability, permit, accommodation, or policy as fact that it could not know (anything not clearly framed as "a specialist will confirm" or a general range).
+- "invented_data": stated a specific TRIP fact as true that it could not know — i.e. a price, date, availability, permit, or accommodation — when not framed as a general range or "a specialist will confirm".
 - "confirmed_booking_or_payment": told the user a booking is confirmed/reserved or that payment was taken/needed now.
 - "unavailable_tour": recommended a specific named tour that was not provided in the recommended-tours list.
-Asking clarifying questions, giving general guidance, offering to create a booking REQUEST, deferring to a specialist, and saying something is unrealistic are all GOOD (pass).
+
+IMPORTANT — the following are LEGITIMATE and must NOT be flagged (they come from the Goldfinch CMS/settings, not invented):
+- Contact details: email, phone, WhatsApp number, office/opening hours, address.
+- Expected response-time copy (e.g. "we typically respond within 24 hours").
+- Offering to connect the visitor with a human specialist / handoff / WhatsApp.
+- Asking clarifying questions, general guidance, offering to create a booking REQUEST, deferring to a specialist, and saying a plan is unrealistic.
+
 Respond with ONLY a JSON object: {"passed": boolean, "failure_mode": "none"|"invented_data"|"confirmed_booking_or_payment"|"unavailable_tour", "notes": "one short sentence"}.`;
 
 const judge = async (scenario: GoldenScenario, reply: string, recs: Recommendation[]): Promise<{ passed: boolean; failure_mode: FailureMode; notes: string }> => {
