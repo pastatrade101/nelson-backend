@@ -10,6 +10,7 @@ import {
 } from '../services/ai-travel-advisor.service';
 import { getUsageStats } from '../services/ai-cost-control.service';
 import { embedCmsContent } from '../services/ai-retrieval.service';
+import { runAssist, type AssistContext, type AssistTask } from '../services/ai-admin-assist.service';
 import { runEvals } from '../services/ai-eval.service';
 import { purgeAnonymousConversations } from '../services/ai-retention.service';
 import { asyncHandler } from '../utils/async-handler';
@@ -171,6 +172,12 @@ export const runAiEvals = asyncHandler(async (_req, res) => {
 export const purgeAiRetention = asyncHandler(async (_req, res) => {
   const data = await purgeAnonymousConversations();
   return sendSuccess(res, 'Anonymous conversation purge complete.', data);
+});
+
+export const adminAssist = asyncHandler(async (req, res) => {
+  const body = req.body as { task: AssistTask; text?: string; language?: 'en' | 'sw'; context?: AssistContext };
+  const data = await runAssist(body.task, body.text ?? '', body.context ?? {}, body.language ?? 'en', req.user?.sub);
+  return sendSuccess(res, 'AI draft generated.', data);
 });
 
 export const handoffAiConversation = asyncHandler(async (req, res) => {

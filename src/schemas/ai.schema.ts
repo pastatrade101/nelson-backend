@@ -44,6 +44,34 @@ export const aiCreateBookingSchema = z.object({
   idempotency_key: z.string().uuid()
 });
 
+// Admin content co-pilot (Phase 7) — authoring help inside the CMS.
+export const aiAssistSchema = z.object({
+  task: z.enum([
+    'write_short',
+    'write_description',
+    'improve',
+    'shorten',
+    'suggest_highlights',
+    'seo_meta',
+    'translate_sw',
+    'draft_itinerary'
+  ]),
+  text: z.string().max(8000).optional(),
+  language: z.enum(['en', 'sw']).optional(),
+  context: z
+    .object({
+      title: z.string().max(300).optional(),
+      destination: z.string().max(200).optional(),
+      duration_days: z.coerce.number().int().positive().max(60).optional(),
+      budget_tier: z.string().max(80).optional(),
+      highlights: z.string().max(4000).optional(),
+      short_description: z.string().max(4000).optional(),
+      full_description: z.string().max(8000).optional()
+    })
+    .partial()
+    .optional()
+});
+
 // Admin: update conversation pipeline status / lead status.
 export const aiStatusSchema = z
   .object({

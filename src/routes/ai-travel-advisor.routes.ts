@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  adminAssist,
   adminCreateBooking,
   chatWithAdvisor,
   createBookingRequest,
@@ -18,7 +19,7 @@ import { aiChatGuard, aiChatLimiter } from '../middleware/ai-guard.middleware';
 import { authenticate } from '../middleware/auth.middleware';
 import { requirePermission } from '../middleware/permission.middleware';
 import { validate } from '../middleware/validate.middleware';
-import { aiAdminBookingSchema, aiChatSchema, aiCreateBookingSchema, aiHandoffSchema, aiStatusSchema } from '../schemas/ai.schema';
+import { aiAdminBookingSchema, aiAssistSchema, aiChatSchema, aiCreateBookingSchema, aiHandoffSchema, aiStatusSchema } from '../schemas/ai.schema';
 
 const router = Router();
 
@@ -45,5 +46,6 @@ router.post('/evals/run', authenticate, requirePermission('ai_conversations.hand
 router.post('/retention/purge', authenticate, requirePermission('ai_conversations.handoff'), purgeAiRetention);
 router.get('/tour-matches/:conversationId', authenticate, requirePermission('tour_matches.view'), getTourMatches);
 router.post('/embeddings/refresh', authenticate, requirePermission('ai_conversations.view'), refreshEmbeddings);
+router.post('/assist', authenticate, requirePermission('tours.update'), validate({ body: aiAssistSchema }), adminAssist);
 
 export default router;
