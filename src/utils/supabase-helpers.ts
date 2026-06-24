@@ -17,6 +17,53 @@ type ListOptions = {
   filters?: string[];
 };
 
+// Image columns (per table) whose URLs may have a web-optimized thumbnail in
+// media_library. For these, we attach `<column>_thumbnail` so public cards can
+// load the small webp instead of the full-size original. Only columns the cards
+// actually use are listed (keeps the payload + lookup lean).
+const THUMBNAIL_COLUMNS: Record<string, string[]> = {
+  tours: ['main_image_url'],
+  destinations: ['main_image_url', 'image_url', 'banner_image_url'],
+  lodges: ['image_url', 'hero_image_url'],
+  blog_posts: ['featured_image_url']
+};
+
+// Attach `<column>_thumbnail` to rows in place when a media_library thumbnail
+// exists for that image URL. Non-fatal: any failure just leaves the originals.
+const attachThumbnails = async (table: string, rows: Array<Record<string, unknown>>) => {
+  const columns = THUMBNAIL_COLUMNS[table];
+  if (!columns?.length || !rows.length) return;
+
+  const urls = new Set<string>();
+  for (const row of rows) {
+    for (const column of columns) {
+      const value = row[column];
+      if (typeof value === 'string' && value) urls.add(value);
+    }
+  }
+  if (!urls.size) return;
+
+  const { data } = await supabase
+    .from('media_library')
+    .select('file_url, thumbnail_url')
+    .in('file_url', [...urls])
+    .not('thumbnail_url', 'is', null);
+
+  if (!data?.length) return;
+
+  const map = new Map<string, string>();
+  for (const item of data as Array<{ file_url: string; thumbnail_url: string }>) {
+    map.set(item.file_url, item.thumbnail_url);
+  }
+
+  for (const row of rows) {
+    for (const column of columns) {
+      const value = row[column];
+      if (typeof value === 'string' && map.has(value)) row[`${column}_thumbnail`] = map.get(value);
+    }
+  }
+};
+
 export const listRecords = async (req: Request, res: Response, options: ListOptions) => {
   const { page, limit, from, to } = getPagination(req.query);
   const search = cleanSearch(getQueryString(req.query, 'search'));
@@ -45,8 +92,11 @@ export const listRecords = async (req: Request, res: Response, options: ListOpti
   const { data, error, count } = await query.range(from, to);
   if (error) throw new AppError(`Unable to fetch ${options.table}.`, 500, [error]);
 
+  const items = (data ?? []) as unknown as Array<Record<string, unknown>>;
+  await attachThumbnails(options.table, items);
+
   return sendSuccess(res, 'Records fetched successfully.', {
-    items: data ?? [],
+    items,
     pagination: paginationMeta(page, limit, count ?? 0)
   });
 };
@@ -62,7 +112,10 @@ export const getRecordBySlug = async (res: Response, table: string, slug: string
   if (error) throw new AppError(`Unable to fetch ${table}.`, 500, [error]);
   if (!data) throw new AppError('Record not found.', 404);
 
-  return sendSuccess(res, 'Record fetched successfully.', data);
+  const record = data as unknown as Record<string, unknown>;
+  await attachThumbnails(table, [record]);
+
+  return sendSuccess(res, 'Record fetched successfully.', record);
 };
 
 export const getRecordById = async (res: Response, table: string, id: string, select = '*') => {
@@ -75,7 +128,10 @@ export const getRecordById = async (res: Response, table: string, id: string, se
   if (error) throw new AppError(`Unable to fetch ${table}.`, 500, [error]);
   if (!data) throw new AppError('Record not found.', 404);
 
-  return sendSuccess(res, 'Record fetched successfully.', data);
+  const record = data as unknown as Record<string, unknown>;
+  await attachThumbnails(table, [record]);
+
+  return sendSuccess(res, 'Record fetched successfully.', record);
 };
 
 export const createRecord = async (
