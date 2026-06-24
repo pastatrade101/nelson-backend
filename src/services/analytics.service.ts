@@ -1,3 +1,4 @@
+import { env } from '../config/env';
 import { supabase } from '../config/supabase';
 import type { TrackEventInput } from '../schemas/analytics.schema';
 
@@ -25,6 +26,21 @@ const scrubMetadata = (metadata?: Record<string, unknown> | null): Record<string
     out[key] = value;
   }
   return out;
+};
+
+export type PurgeResult = { purged: number; cutoff: string; retentionDays: number };
+
+/** Delete analytics events older than ANALYTICS_RETENTION_DAYS. Never throws. */
+export const purgeOldEvents = async (): Promise<PurgeResult> => {
+  const retentionDays = env.ANALYTICS_RETENTION_DAYS;
+  const cutoff = new Date(Date.now() - retentionDays * 86_400_000).toISOString();
+  try {
+    const { data, error } = await supabase.from('analytics_events').delete().lt('created_at', cutoff).select('id');
+    if (error) return { purged: 0, cutoff, retentionDays };
+    return { purged: data?.length ?? 0, cutoff, retentionDays };
+  } catch {
+    return { purged: 0, cutoff, retentionDays };
+  }
 };
 
 /** Insert one analytics event. Never throws. */

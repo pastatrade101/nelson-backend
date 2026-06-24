@@ -33,6 +33,9 @@ const envSchema = z.object({
   GOOGLE_CLIENT_EMAIL: z.string().optional().or(z.literal('')),
   GOOGLE_PRIVATE_KEY: z.string().optional().or(z.literal('')),
 
+  // Analytics event retention: delete analytics_events older than N days (nightly).
+  ANALYTICS_RETENTION_DAYS: z.coerce.number().int().default(180),
+
   // ── Goldfinch AI Travel Advisor (v2) ──────────────────────────────────────
   AI_ENABLED: boolish(true),
   AI_DAILY_BUDGET_USD: z.coerce.number().default(5),

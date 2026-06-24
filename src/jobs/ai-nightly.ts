@@ -1,6 +1,7 @@
 import { runEvals } from '../services/ai-eval.service';
 import { purgeAnonymousConversations } from '../services/ai-retention.service';
 import { embedCmsContent } from '../services/ai-retrieval.service';
+import { purgeOldEvents } from '../services/analytics.service';
 
 // ----------------------------------------------------------------------------
 // Nightly AI maintenance (§14, §27, §10). Run from the host's scheduler, e.g.:
@@ -18,6 +19,13 @@ const main = async () => {
     console.log('[ai-nightly] retention purge:', purge);
   } catch (err) {
     console.error('[ai-nightly] retention purge failed:', (err as Error).message);
+  }
+
+  try {
+    const events = await purgeOldEvents();
+    console.log('[ai-nightly] analytics events purge:', events);
+  } catch (err) {
+    console.error('[ai-nightly] analytics events purge failed:', (err as Error).message);
   }
 
   try {
