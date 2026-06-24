@@ -4,6 +4,8 @@ import {
   getAnalyticsLeads,
   getAnalyticsOverview,
   getAnalyticsTimeseries,
+  getAnalyticsTraffic,
+  getIntegrations,
   trackEvent
 } from '../controllers/analytics.controller';
 import { authenticate } from '../middleware/auth.middleware';
@@ -22,5 +24,7 @@ router.get('/overview', authenticate, requirePermission('dashboard.view'), getAn
 router.get('/leads', authenticate, requirePermission('dashboard.view'), getAnalyticsLeads);
 router.get('/funnel', authenticate, requirePermission('dashboard.view'), getAnalyticsFunnel);
 router.get('/timeseries', authenticate, requirePermission('dashboard.view'), getAnalyticsTimeseries);
+router.get('/traffic', authenticate, requirePermission('dashboard.view'), getAnalyticsTraffic);
+router.get('/integrations', authenticate, requirePermission('dashboard.view'), getIntegrations);
 
 export default router;

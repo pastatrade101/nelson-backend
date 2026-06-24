@@ -8,6 +8,8 @@ import {
   recordEvent,
   resolveRange
 } from '../services/analytics.service';
+import { env } from '../config/env';
+import { getTraffic, isGa4Configured } from '../services/ga4.service';
 import { asyncHandler } from '../utils/async-handler';
 import { sendSuccess } from '../utils/api-response';
 import { getQueryString } from '../utils/query';
@@ -50,4 +52,21 @@ export const getAnalyticsFunnel = asyncHandler(async (req, res) => {
 export const getAnalyticsTimeseries = asyncHandler(async (req, res) => {
   const data = await getEventTimeseries(rangeFromQuery(req));
   return sendSuccess(res, 'Traffic timeseries fetched.', data);
+});
+
+// GA4 traffic (Phase 2). Returns { configured: false } when GA4 isn't set up.
+export const getAnalyticsTraffic = asyncHandler(async (req, res) => {
+  const data = await getTraffic(rangeFromQuery(req));
+  return sendSuccess(res, 'GA4 traffic fetched.', data);
+});
+
+// Integration status (no secrets returned) — powers /admin/settings/integrations.
+export const getIntegrations = asyncHandler(async (_req, res) => {
+  return sendSuccess(res, 'Integration status.', {
+    ga4: { configured: isGa4Configured() },
+    hubspot: { configured: Boolean(env.HUBSPOT_ACCESS_TOKEN), portalId: env.HUBSPOT_PORTAL_ID || null },
+    whatsappCloudApi: { configured: Boolean(env.WHATSAPP_ACCESS_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID) },
+    aiAdvisor: { configured: Boolean(env.ANTHROPIC_API_KEY) },
+    turnstile: { configured: Boolean(env.TURNSTILE_SECRET_KEY) }
+  });
 });

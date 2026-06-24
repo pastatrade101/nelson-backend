@@ -25,6 +25,14 @@ const envSchema = z.object({
   HUBSPOT_ACCESS_TOKEN: z.string().optional().or(z.literal('')),
   HUBSPOT_PORTAL_ID: z.string().optional().or(z.literal('')),
 
+  // ── GA4 Data API (Phase 2 analytics traffic) — backend only ───────────────
+  // Service-account credentials. GOOGLE_PRIVATE_KEY keeps literal "\n" newlines
+  // (we un-escape them at use). Leave blank to run without GA4 (dashboard shows
+  // a "not configured" state and never errors).
+  GA4_PROPERTY_ID: z.string().optional().or(z.literal('')),
+  GOOGLE_CLIENT_EMAIL: z.string().optional().or(z.literal('')),
+  GOOGLE_PRIVATE_KEY: z.string().optional().or(z.literal('')),
+
   // ── Goldfinch AI Travel Advisor (v2) ──────────────────────────────────────
   AI_ENABLED: boolish(true),
   AI_DAILY_BUDGET_USD: z.coerce.number().default(5),
