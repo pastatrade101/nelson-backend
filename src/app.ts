@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.routes';
 import aiTravelAdvisorRoutes from './routes/ai-travel-advisor.routes';
 import brandingRoutes from './routes/branding.routes';
 import auditLogsRoutes from './routes/audit-logs.routes';
+import analyticsRoutes from './routes/analytics.routes';
 import availableDatesRoutes from './routes/available-dates.routes';
 import blogRoutes from './routes/blog.routes';
 import blogCategoriesRoutes from './routes/blog-categories.routes';
@@ -123,6 +124,7 @@ app.use('/api/users', usersRoutes);
 app.use('/api/roles', rolesRoutes);
 app.use('/api/permissions', permissionsRoutes);
 app.use('/api/audit-logs', auditLogsRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);
