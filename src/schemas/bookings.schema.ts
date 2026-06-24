@@ -49,7 +49,10 @@ export const bookingCreateSchema = z.object({
   currency: z.string().min(3).max(3).default('USD'),
   source: sourceEnum.default('website_booking_form'),
   ai_conversation_id: uuidOrEmpty,
-  lead_context: leadContextSchema
+  lead_context: leadContextSchema,
+  // Honeypot — must stay empty for humans. Kept in the schema (zod strips unknown
+  // keys) so the controller can inspect it, then it is dropped before insert.
+  hp_company: z.string().max(120).optional().nullable()
 });
 
 export const bookingUpdateSchema = z.object({

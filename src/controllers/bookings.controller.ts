@@ -25,9 +25,48 @@ export const createBooking = asyncHandler(async (req, res) => {
   const payload = nullifyEmpties(req.body as Record<string, unknown>);
   const isAdmin = Boolean(req.user);
 
+  // ── Anti-spam: honeypot ────────────────────────────────────────────────────
+  // The hidden `hp_company` field is invisible to real users; bots tend to fill
+  // every field. If it's set, pretend success and store nothing. (Drop it either
+  // way so it never reaches the insert.)
+  const honeypot = String(payload.hp_company ?? '').trim();
+  delete payload.hp_company;
+  if (!isAdmin && honeypot) {
+    return sendSuccess(res, 'Booking request submitted successfully.', { booking_code: null }, 201);
+  }
+
   let source = String(payload.source ?? 'website_booking_form');
   // Public submitters may only set public sources — never forge admin/CRM sources.
   if (!isAdmin && !PUBLIC_SOURCES.includes(source)) source = 'website_booking_form';
+
+  // ── Anti-spam: duplicate guard ──────────────────────────────────────────────
+  // Protect against double-taps / refresh re-posts: if the same email already
+  // submitted for the same trip (or a general request) in the last 2 minutes,
+  // return that existing request instead of creating a duplicate row.
+  if (!isAdmin) {
+    const email = String(payload.email ?? '').trim();
+    if (email) {
+      const sinceIso = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      let dupQuery = supabase
+        .from('booking_requests')
+        .select(detailSelect)
+        .ilike('email', email)
+        .gte('created_at', sinceIso)
+        .is('deleted_at', null);
+      dupQuery = payload.tour_id
+        ? dupQuery.eq('tour_id', payload.tour_id as string)
+        : dupQuery.is('tour_id', null);
+
+      const { data: existing } = await dupQuery
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        return sendSuccess(res, 'Booking request already received.', existing, 201);
+      }
+    }
+  }
 
   const bookingCode = await generateBookingCode();
 
