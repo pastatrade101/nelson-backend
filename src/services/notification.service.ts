@@ -19,7 +19,10 @@ export type CrmLead = {
   country: string;
   tripId: string | null;
   tripTitle: string;
+  destinationInterest: string;
   travelDate: string;
+  travelMonth: string;
+  travellerType: string;
   adults: number;
   children: number;
   budgetRange: string;
@@ -44,7 +47,13 @@ export const buildLeadFromBooking = (booking: BookingLike): CrmLead => {
 
   const fullName = str(booking.full_name);
   const nameParts = fullName.split(/\s+/).filter(Boolean);
-  const tripTitle = str(lc.selected_trip) || str(tour?.title);
+  const destinationInterest = str(lc.destination_interest);
+  const tripTitle = str(lc.selected_trip) || str(tour?.title) || destinationInterest;
+
+  // Exact dates (Plan My Trip) read back into a friendly travel-date string.
+  const exactStart = str(lc.exact_start_date);
+  const exactEnd = str(lc.exact_end_date);
+  const travelDate = str(booking.travel_date) || exactStart;
 
   const lead: CrmLead = {
     bookingCode: str(booking.booking_code),
@@ -56,29 +65,41 @@ export const buildLeadFromBooking = (booking: BookingLike): CrmLead => {
     country: str(booking.country),
     tripId: (booking.tour_id as string | null) ?? null,
     tripTitle,
-    travelDate: str(booking.travel_date),
+    destinationInterest,
+    travelDate,
+    travelMonth: str(lc.travel_month),
+    travellerType: str(lc.traveller_type),
     adults: Number(booking.number_of_adults ?? 0),
     children: Number(booking.number_of_children ?? 0),
     budgetRange: str(lc.budget_range) || str(lc.budget_per_person),
     tripDuration: str(lc.trip_duration),
     dateFlexibility: str(lc.date_flexibility),
-    travelInterests: str(lc.travel_interests),
+    travelInterests: str(lc.travel_interests) || str(lc.experience_interests),
     accommodationPreference: str(lc.accommodation_preference),
     specialRequests: str(booking.special_requests),
     message: str(booking.message),
     sourcePageUrl: str(lc.source_page_url),
-    leadSource: 'Website Booking Request',
+    leadSource: str(lc.lead_source) || 'Website Booking Request',
     stage: 'New Lead',
     summary: ''
   };
+
+  // When/duration line prefers exact dates, then month, then a duration band.
+  const whenLine = exactStart && exactEnd
+    ? `Dates: ${exactStart} → ${exactEnd}`
+    : lead.travelMonth
+      ? `Travel month: ${lead.travelMonth}`
+      : lead.travelDate
+        ? `Preferred date: ${lead.travelDate}`
+        : '';
 
   // Human-readable brief — handy for the email body, WhatsApp message and the
   // HubSpot note/message field (which accepts free text without custom props).
   const lines = [
     lead.tripTitle ? `Trip: ${lead.tripTitle}` : 'General trip request',
-    lead.travelDate ? `Preferred date: ${lead.travelDate}${lead.dateFlexibility ? ` (flexibility: ${lead.dateFlexibility})` : ''}` : '',
+    whenLine ? `${whenLine}${lead.dateFlexibility ? ` (flexibility: ${lead.dateFlexibility})` : ''}` : '',
     lead.tripDuration ? `Duration: ${lead.tripDuration}` : '',
-    `Travellers: ${lead.adults} adults, ${lead.children} children`,
+    `Travellers: ${lead.adults} adults, ${lead.children} children${lead.travellerType ? ` — ${lead.travellerType}` : ''}`,
     lead.budgetRange ? `Budget: ${lead.budgetRange}` : '',
     lead.accommodationPreference ? `Accommodation: ${lead.accommodationPreference}` : '',
     lead.travelInterests ? `Interests: ${lead.travelInterests}` : '',
