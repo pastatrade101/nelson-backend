@@ -7,6 +7,8 @@ export const mediaCreateSchema = z.object({
   file_name: z.string().min(1),
   file_url: z.string().url(),
   file_path: z.string().min(1),
+  thumbnail_url: z.string().url().optional().nullable(),
+  thumbnail_path: optionalText,
   file_type: mediaTypeSchema.default('image'),
   mime_type: optionalText,
   file_size: z.coerce.number().int().nonnegative().optional().nullable(),

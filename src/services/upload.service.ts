@@ -1,7 +1,12 @@
 import { randomUUID } from 'crypto';
+import sharp from 'sharp';
 import { env } from '../config/env';
 import { supabase } from '../config/supabase';
 import { AppError } from '../utils/api-response';
+
+// Width of the web-optimized thumbnail we store alongside each uploaded image.
+// Big enough for crisp card/grid use on retina, tiny in bytes as webp.
+const THUMBNAIL_WIDTH = 600;
 
 let bucketReadyPromise: Promise<void> | null = null;
 
@@ -45,16 +50,10 @@ const ensureStorageBucket = async () => {
   }
 };
 
-const uploadToStorage = async (file: Express.Multer.File, folder: string, allowedMimeTypes: string[], errorMessage: string) => {
-  const extension = extensionFromMime(file.mimetype);
-  if (!extension || !allowedMimeTypes.includes(file.mimetype)) throw new AppError(errorMessage, 400);
-
-  await ensureStorageBucket();
-
-  const path = `${folder}/${randomUUID()}.${extension}`;
-
-  const { error } = await supabase.storage.from(env.SUPABASE_STORAGE_BUCKET).upload(path, file.buffer, {
-    contentType: file.mimetype,
+// Upload a raw buffer to storage and return its public URL.
+const putObject = async (path: string, buffer: Buffer, contentType: string) => {
+  const { error } = await supabase.storage.from(env.SUPABASE_STORAGE_BUCKET).upload(path, buffer, {
+    contentType,
     cacheControl: '3600',
     upsert: false
   });
@@ -62,17 +61,47 @@ const uploadToStorage = async (file: Express.Multer.File, folder: string, allowe
   if (error) throw new AppError(`Unable to upload file to Supabase Storage: ${error.message}`, 500, [error]);
 
   const { data } = supabase.storage.from(env.SUPABASE_STORAGE_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+};
+
+const uploadToStorage = async (file: Express.Multer.File, folder: string, allowedMimeTypes: string[], errorMessage: string) => {
+  const extension = extensionFromMime(file.mimetype);
+  if (!extension || !allowedMimeTypes.includes(file.mimetype)) throw new AppError(errorMessage, 400);
+
+  await ensureStorageBucket();
+
+  const path = `${folder}/${randomUUID()}.${extension}`;
+  const url = await putObject(path, file.buffer, file.mimetype);
 
   return {
     path,
-    url: data.publicUrl,
+    url,
     mimeType: file.mimetype,
     size: file.size
   };
 };
 
 export const uploadImageToStorage = async (file: Express.Multer.File, folder = 'uploads') => {
-  return uploadToStorage(file, folder, ['image/jpeg', 'image/png', 'image/webp'], 'Only jpg, jpeg, png, and webp images are allowed.');
+  const result = await uploadToStorage(file, folder, ['image/jpeg', 'image/png', 'image/webp'], 'Only jpg, jpeg, png, and webp images are allowed.');
+
+  // Generate a small webp thumbnail. This is a pure optimization — if it fails
+  // for any reason, the upload still succeeds and we fall back to the original.
+  let thumbnailPath: string | undefined;
+  let thumbnailUrl: string | undefined;
+  try {
+    const thumbnailBuffer = await sharp(file.buffer)
+      .rotate() // honour EXIF orientation
+      .resize({ width: THUMBNAIL_WIDTH, withoutEnlargement: true })
+      .webp({ quality: 72 })
+      .toBuffer();
+    thumbnailPath = `${folder}/thumbnails/${randomUUID()}.webp`;
+    thumbnailUrl = await putObject(thumbnailPath, thumbnailBuffer, 'image/webp');
+  } catch {
+    thumbnailPath = undefined;
+    thumbnailUrl = undefined;
+  }
+
+  return { ...result, thumbnailPath, thumbnailUrl };
 };
 
 export const uploadLottieToStorage = async (file: Express.Multer.File, folder = 'lottie') => {

@@ -8,7 +8,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "ai:nightly": "tsx src/jobs/ai-nightly.ts",
-    "ai:nightly:prod": "node dist/jobs/ai-nightly.js"
+    "ai:nightly:prod": "node dist/jobs/ai-nightly.js",
+    "backfill:thumbnails": "tsx src/scripts/backfill-thumbnails.ts",
+    "backfill:thumbnails:prod": "node dist/scripts/backfill-thumbnails.js"
   },
   "dependencies": {
     "@google-analytics/data": "^6.1.0",
@@ -22,6 +24,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "multer": "^2.1.1",
+    "sharp": "^0.33.5",
     "ws": "^8.21.0",
     "zod": "^3.23.8"
   },

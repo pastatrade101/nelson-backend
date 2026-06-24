@@ -17,12 +17,15 @@ export const uploadImage = asyncHandler(async (req, res) => {
     file_size: result.size,
     file_type: 'image',
     file_url: result.url,
+    thumbnail_path: result.thumbnailPath ?? null,
+    thumbnail_url: result.thumbnailUrl ?? null,
     mime_type: result.mimeType,
     uploaded_by: req.user?.sub ?? null
   }).select('*').single();
 
   if (mediaError) {
     await deleteImageFromStorage(result.path);
+    if (result.thumbnailPath) await deleteImageFromStorage(result.thumbnailPath).catch(() => undefined);
     throw new AppError(`Image uploaded, but media metadata could not be saved: ${mediaError.message}`, 500, [mediaError]);
   }
 
