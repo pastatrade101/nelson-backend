@@ -11,10 +11,15 @@ import { randomUUID } from 'crypto';
 import sharp from 'sharp';
 import { env } from '../config/env';
 import { supabase } from '../config/supabase';
+import { ensureStorageBucket } from '../services/upload.service';
 
 const THUMBNAIL_WIDTH = 600;
 
 const run = async () => {
+  // Create the storage bucket if it doesn't exist yet (e.g. when no real file
+  // has been uploaded through the admin so far), matching the upload flow.
+  await ensureStorageBucket();
+
   const { data, error } = await supabase
     .from('media_library')
     .select('id, file_url, file_path')

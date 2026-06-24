@@ -23,7 +23,7 @@ const extensionFromMime = (mimeType: string) => {
   return map[mimeType];
 };
 
-const ensureStorageBucket = async () => {
+export const ensureStorageBucket = async () => {
   if (!bucketReadyPromise) {
     bucketReadyPromise = (async () => {
       const { error: getError } = await supabase.storage.getBucket(env.SUPABASE_STORAGE_BUCKET);
