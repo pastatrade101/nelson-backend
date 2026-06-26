@@ -1,40 +1,46 @@
 # Goldfinch Tour Website — Backend API
 
-Express + TypeScript API backed by Supabase (PostgreSQL) for the Goldfinch Adventures CMS and public website.
+Express + TypeScript API backed by Supabase (PostgreSQL + Storage) for the
+Goldfinch Adventures public site, admin CMS, customer trip portal, and AI advisor.
+
+## 📚 Documentation
+
+Full system docs live in **[`docs/`](docs/)**:
+
+- [Architecture](docs/architecture.md) — components, stack, repo layout
+- [Deployment & Ops](docs/deployment.md) — server, Makefile, scripts, **email/Resend setup**
+- [Environment variables](docs/environment.md) — full reference
+- [Database](docs/database.md) — schema + migrations
+- [Features](docs/features.md) — trip portal, email, media, analytics, AI, …
+- [API reference](docs/api.md) — endpoints & auth
 
 ## Stack
-- Express 4 + TypeScript (`tsx` in dev, `tsc` build)
-- Supabase (`@supabase/supabase-js`)
-- JWT auth (`jsonwebtoken`) + `bcryptjs`
-- Zod validation, Helmet, CORS, rate limiting, Morgan
+- Express 4 + TypeScript (`tsx` in dev, `tsc` build), Node 22
+- Supabase (`@supabase/supabase-js`) — Postgres + Storage
+- JWT auth (`jsonwebtoken`) + `bcryptjs`; Zod, Helmet, CORS, rate limiting, Morgan
+- `sharp` (thumbnails), `nodemailer`/Resend (email), Anthropic Claude (AI)
 
-## Scripts
+## Local development
 ```bash
 npm install
-npm run dev     # tsx watch src/server.ts
-npm run build   # tsc -> dist/
-npm start       # node dist/server.js
+cp .env.example .env   # then fill in (see docs/environment.md). Never commit .env
+npm run dev            # tsx watch src/server.ts  (default PORT 5000)
+npm run build          # tsc -> dist/
+npm start              # node dist/server.js
+```
+Health check: `GET /api/health`.
+
+## Ops scripts
+Run inside the container in production: `docker exec -it tour-site-api-server npm run <name>:prod`
+```bash
+npm run backfill:thumbnails   # generate webp thumbnails for old images
+npm run email:test <to>       # send a test email via the configured provider
+npm run ai:nightly            # analytics + AI data-retention purges
 ```
 
-## Environment variables
-Copy `.env.example` to `.env` and fill in. **Never commit `.env`.**
-
-| Variable | Purpose |
-|---|---|
-| `PORT` | API port (default 4000) |
-| `NODE_ENV` | `development` / `production` |
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server only) |
-| `JWT_SECRET` | Secret for signing admin JWTs |
-| `CORS_ORIGINS` | Comma-separated allowed origins |
-| `HUBSPOT_ACCESS_TOKEN` | (optional) HubSpot CRM sync |
-| `HUBSPOT_PORTAL_ID` | (optional) HubSpot portal id |
-
 ## Deploy
-1. Provision the Postgres schema with `database/schema.sql`, then `database/seed.sql` (kept in the main project repo).
-2. Set the environment variables on your host (Render, Railway, Fly, etc.).
-3. Build command: `npm install && npm run build`
-4. Start command: `npm start`
-5. Health check: `GET /api/health`
+Docker Compose on the VPS — see [docs/deployment.md](docs/deployment.md). In short:
+`git pull` → apply any new migration in the Supabase SQL editor → `make deploy`.
 
-Secrets (`SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, `HUBSPOT_ACCESS_TOKEN`) are read from environment variables only and are never exposed to the frontend.
+Secrets (`SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, `RESEND_API_KEY`,
+`HUBSPOT_ACCESS_TOKEN`, …) are read from env only and never exposed to the frontend.
