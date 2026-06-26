@@ -10,7 +10,9 @@
     "ai:nightly": "tsx src/jobs/ai-nightly.ts",
     "ai:nightly:prod": "node dist/jobs/ai-nightly.js",
     "backfill:thumbnails": "tsx src/scripts/backfill-thumbnails.ts",
-    "backfill:thumbnails:prod": "node dist/scripts/backfill-thumbnails.js"
+    "backfill:thumbnails:prod": "node dist/scripts/backfill-thumbnails.js",
+    "email:test": "tsx src/scripts/email-test.ts",
+    "email:test:prod": "node dist/scripts/email-test.js"
   },
   "dependencies": {
     "@google-analytics/data": "^6.1.0",
