@@ -34,6 +34,8 @@ declare global {
       aiSessionId?: string;
       aiIpHash?: string;
       aiTurnstileVerified?: boolean;
+      // Trip portal: booking id from the verified magic-link session cookie.
+      tripBookingId?: string;
     }
   }
 }
