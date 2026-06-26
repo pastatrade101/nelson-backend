@@ -25,6 +25,19 @@ const envSchema = z.object({
   HUBSPOT_ACCESS_TOKEN: z.string().optional().or(z.literal('')),
   HUBSPOT_PORTAL_ID: z.string().optional().or(z.literal('')),
 
+  // ── Email (transactional) — pluggable provider ────────────────────────────
+  // Set EITHER Resend (recommended: just an API key) OR SMTP (your domain
+  // mailbox). If neither is set, email sends are skipped (nothing breaks).
+  EMAIL_FROM: z.string().default('Goldfinch Adventures <onboarding@resend.dev>'),
+  RESEND_API_KEY: z.string().optional().or(z.literal('')),
+  SMTP_HOST: z.string().optional().or(z.literal('')),
+  SMTP_PORT: z.coerce.number().int().default(587),
+  SMTP_SECURE: boolish(false),
+  SMTP_USER: z.string().optional().or(z.literal('')),
+  SMTP_PASS: z.string().optional().or(z.literal('')),
+  // Where new-booking notifications go (defaults to none → skipped).
+  SPECIALIST_EMAIL: z.string().optional().or(z.literal('')),
+
   // ── GA4 Data API (Phase 2 analytics traffic) — backend only ───────────────
   // Service-account credentials. GOOGLE_PRIVATE_KEY keeps literal "\n" newlines
   // (we un-escape them at use). Leave blank to run without GA4 (dashboard shows

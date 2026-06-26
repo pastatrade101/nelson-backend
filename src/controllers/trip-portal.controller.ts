@@ -8,6 +8,8 @@ import {
   getTripView,
   recordTripMessage,
   redeemTripToken,
+  requestTripAccessByEmail,
+  sendTripLinkEmail,
   signTripSession
 } from '../services/trip-portal.service';
 
@@ -55,11 +57,23 @@ export const logoutTrip = asyncHandler(async (_req, res) => {
   return sendSuccess(res, 'Signed out.');
 });
 
-/** Admin: generate (and copy) a fresh secure trip link for a booking. */
+/** Public (self-service): email the traveller their trip link. Always returns a
+ *  generic success so it can't be used to probe which emails exist. */
+export const requestTripAccess = asyncHandler(async (req, res) => {
+  const email = typeof req.body?.email === 'string' ? req.body.email : '';
+  await requestTripAccessByEmail(email);
+  return sendSuccess(res, "If we found a trip for that email, we've sent a secure link to it.");
+});
+
+/** Admin: generate a fresh secure trip link for a booking. With send_email=true
+ *  it also emails the link to the traveller. */
 export const adminCreateTripLink = asyncHandler(async (req, res) => {
   const bookingId = typeof req.body?.booking_id === 'string' ? req.body.booking_id : '';
   if (!bookingId) throw new AppError('booking_id is required.', 422);
+  const sendEmailToo = req.body?.send_email === true;
 
-  const link = await createTripLink(bookingId, req.user?.sub ?? null);
-  return sendSuccess(res, 'Trip link created.', link, 201);
+  const link = sendEmailToo
+    ? await sendTripLinkEmail(bookingId, req.user?.sub ?? null)
+    : await createTripLink(bookingId, req.user?.sub ?? null);
+  return sendSuccess(res, sendEmailToo ? 'Trip link sent.' : 'Trip link created.', link, 201);
 });

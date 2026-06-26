@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { supabase } from '../config/supabase';
 import { AppError } from '../utils/api-response';
+import { emailLayout, sendEmail } from './email.service';
 
 // How long a generated magic link stays valid (covers the whole pre-trip
 // window: deposits, balance payments, document exchange).
@@ -66,6 +67,68 @@ export const createTripLink = async (bookingId: string, adminId: string | null) 
   if (insertError) throw new AppError('Unable to create trip link.', 500, [insertError]);
 
   return { url: `${frontendOrigin()}/trip/${rawToken}`, expiresAt };
+};
+
+/**
+ * Generate a fresh link for a booking and email it to the traveller. Returns
+ * the link (so the admin can still copy it) plus whether the email was sent.
+ * Email failures are non-fatal — the link is always returned.
+ */
+export const sendTripLinkEmail = async (bookingId: string, adminId: string | null) => {
+  const { data: booking } = await supabase
+    .from('booking_requests')
+    .select('email, full_name, booking_code, tours(title)')
+    .eq('id', bookingId)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (!booking) throw new AppError('Booking not found.', 404);
+  const b = booking as Record<string, unknown>;
+
+  const { url, expiresAt } = await createTripLink(bookingId, adminId);
+
+  let emailed = false;
+  const to = String(b.email ?? '').trim();
+  if (to) {
+    const name = String(b.full_name ?? 'there').split(/\s+/)[0] || 'there';
+    const tripTitle = ((b.tours as { title?: string } | null)?.title) ?? 'your East Africa trip';
+    emailed = await sendEmail({
+      to,
+      subject: `Your Goldfinch trip portal — ${String(b.booking_code ?? '')}`,
+      html: emailLayout(
+        `Hi ${name}, here's your trip portal`,
+        `<p>You can view <strong>${tripTitle}</strong>, see your itinerary and payment balance, and message your specialist any time — no password needed.</p>
+         <p style="font-size:13px;color:#8a948f">This secure link is just for you. Please don't forward it.</p>`,
+        { label: 'Open my trip', url }
+      ),
+      text: `Hi ${name}, open your Goldfinch trip portal here: ${url}`
+    });
+  }
+
+  return { url, expiresAt, emailed };
+};
+
+/**
+ * Self-service: find the most recent booking for an email and send its link.
+ * Always resolves silently (no indication whether the email exists) to prevent
+ * account enumeration.
+ */
+export const requestTripAccessByEmail = async (email: string): Promise<void> => {
+  const clean = email.trim().toLowerCase();
+  if (!clean) return;
+  const { data: booking } = await supabase
+    .from('booking_requests')
+    .select('id')
+    .ilike('email', clean)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!booking) return;
+  try {
+    await sendTripLinkEmail((booking as { id: string }).id, null);
+  } catch {
+    /* never reveal failures to the caller */
+  }
 };
 
 /** Exchange a raw magic-link token for the booking id it grants access to. */

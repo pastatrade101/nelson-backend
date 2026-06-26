@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import { emailLayout, sendEmail } from './email.service';
 import { syncToHubSpot } from './hubspot.service';
 
 type BookingLike = Record<string, unknown>;
@@ -128,10 +129,21 @@ export const sendBookingNotification = async (booking: BookingLike): Promise<voi
       );
     }
 
-    // TODO(email): send an internal email to the specialist inbox with `lead`.
-    //   e.g. await sendEmail({ to: env.SPECIALIST_EMAIL, subject: `New trip request — ${lead.tripTitle || lead.country}`, text: lead.summary });
+    // Email the specialist inbox (skips silently if email/recipient not configured).
+    if (env.SPECIALIST_EMAIL) {
+      await sendEmail({
+        to: env.SPECIALIST_EMAIL,
+        replyTo: lead.email || undefined,
+        subject: `New trip request — ${lead.tripTitle || lead.destinationInterest || lead.country || lead.fullName}`,
+        html: emailLayout(
+          `New trip request · ${lead.bookingCode || ''}`,
+          `<p><strong>${lead.fullName || 'A traveller'}</strong> &lt;${lead.email || 'no email'}&gt;${lead.phone ? ` · ${lead.phone}` : ''}</p>
+           <pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;color:#384540">${lead.summary}</pre>`
+        ),
+        text: `New booking ${lead.bookingCode}\n${lead.fullName} <${lead.email}>\n\n${lead.summary}`
+      });
+    }
     // TODO(whatsapp): notify the on-call specialist with a short brief.
-    //   e.g. await sendWhatsApp({ to: env.SPECIALIST_WHATSAPP, text: `New lead ${lead.bookingCode}: ${lead.fullName}\n${lead.summary}` });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[notification] Failed to send booking notification', error);
