@@ -20,6 +20,7 @@ Validation happens in `backend/src/config/env.ts` (Zod). In `production` the app
 | `SUPABASE_URL` | — | **Required in prod** |
 | `SUPABASE_SERVICE_ROLE_KEY` | — | **Required in prod**. Full DB/storage access — never expose |
 | `SUPABASE_STORAGE_BUCKET` | `goldfinch-media` | Public media bucket |
+| `SUPABASE_DB_URL` | — | Raw Postgres connection string used by `npm run db:pipeline`; not used by the running API |
 | `JWT_SECRET` | dev placeholder | **Must change in prod** (≥16 chars). Signs admin + trip sessions |
 | `JWT_EXPIRES_IN` | `7d` | Admin token lifetime |
 

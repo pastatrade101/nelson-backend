@@ -83,7 +83,7 @@ export const aiChatGuard = (req: Request, res: Response, next: NextFunction): vo
     // 3) Daily per-session cap (weak IP is handled by the limiter below).
     const sessionCount = await countSessionMessagesToday(sid);
     if (sessionCount >= env.AI_MAX_MESSAGES_PER_SESSION) {
-      sendError(res, "You've reached today's chat limit for this device. You can continue with a Goldfinch specialist on WhatsApp.", [], 429);
+      sendError(res, "You've reached today's chat limit for this device. You can continue with an Emnel specialist on WhatsApp.", [], 429);
       return;
     }
 

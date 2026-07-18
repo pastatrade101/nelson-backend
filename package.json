@@ -7,6 +7,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "db:pipeline": "tsx src/scripts/db-pipeline.ts",
+    "db:pipeline:prod": "node dist/scripts/db-pipeline.js",
     "ai:nightly": "tsx src/jobs/ai-nightly.ts",
     "ai:nightly:prod": "node dist/jobs/ai-nightly.js",
     "backfill:thumbnails": "tsx src/scripts/backfill-thumbnails.ts",
@@ -27,6 +29,7 @@
     "morgan": "^1.10.0",
     "multer": "^2.1.1",
     "nodemailer": "^6.10.1",
+    "pg": "^8.22.0",
     "sharp": "^0.33.5",
     "ws": "^8.21.0",
     "zod": "^3.23.8"
@@ -40,6 +43,7 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^22.7.5",
     "@types/nodemailer": "^6.4.24",
+    "@types/pg": "^8.20.0",
     "@types/ws": "^8.18.1",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3"

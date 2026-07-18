@@ -179,7 +179,7 @@ export const searchTours = async (intent: ToursIntent, ctx: AdvisorContext): Pro
       availability_note: avail.hasDeparture ? 'Departures available — to be confirmed' : 'No fixed departure — custom trip possible',
       score,
       confidence_label: confidenceLabel(score),
-      reasons: reasons.length ? reasons : ['A solid Goldfinch East Africa option'],
+      reasons: reasons.length ? reasons : ['A solid Emnel Tanzania option'],
       limitations,
       cta: `/tours/${String(tour.slug ?? '')}`
     };
@@ -205,7 +205,7 @@ const checkAvailability = async (input: Record<string, unknown>): Promise<ToolRe
   if (!tour || (tour as { status?: string }).status !== 'published' || (tour as { is_available?: boolean }).is_available === false) {
     return {
       success: true,
-      output: { available: false, status: 'none', message: "I don't see this trip as currently bookable, but a Goldfinch specialist can arrange a tailor-made option." }
+      output: { available: false, status: 'none', message: "I don't see this trip as currently bookable, but an Emnel specialist can arrange a tailor-made option." }
     };
   }
 
@@ -233,7 +233,7 @@ const checkAvailability = async (input: Record<string, unknown>): Promise<ToolRe
   if (!rows.length) {
     return {
       success: true,
-      output: { available: false, status: 'none', departures: [], message: "I don't see a fixed departure for those dates, but Goldfinch can prepare a tailor-made option. Want me to send this as a custom request?" }
+      output: { available: false, status: 'none', departures: [], message: "I don't see a fixed departure for those dates, but Emnel can prepare a tailor-made option. Want me to send this as a custom request?" }
     };
   }
   if (!fitting.length) {
@@ -248,7 +248,7 @@ const checkAvailability = async (input: Record<string, unknown>): Promise<ToolRe
       available: true,
       status: 'available',
       departures: fitting,
-      message: 'This looks available based on current system data, but a Goldfinch specialist will confirm.'
+      message: 'This looks available based on current system data, but an Emnel specialist will confirm.'
     }
   };
 };
@@ -309,7 +309,7 @@ export const createBookingRequest = async (input: Record<string, unknown>, ctx: 
 
   const insertPayload: Record<string, unknown> = {
     full_name: fullName,
-    email: email || 'pending@goldfinch.local',
+    email: email || 'pending@emneladventures.com',
     phone: phone || null,
     country: (ctxRow.country as string) || null,
     travel_date: (ctxRow.start_date as string) || null,
@@ -322,7 +322,7 @@ export const createBookingRequest = async (input: Record<string, unknown>, ctx: 
     ai_conversation_id: conversationId,
     tour_id: ctx.pageContext?.tour_id || (ctxRow.preferred_tour_id as string) || null,
     lead_context: ctxRow,
-    admin_notes: (ctxRow.message_summary as string) || 'Created by Goldfinch AI Travel Advisor.',
+    admin_notes: (ctxRow.message_summary as string) || 'Created by Emnel AI Safari Advisor.',
     idempotency_key: idempotencyKey
   };
 

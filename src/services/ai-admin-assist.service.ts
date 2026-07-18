@@ -40,7 +40,7 @@ export type AssistResult = {
   itinerary?: Array<{ day_number: number; title: string; description: string; accommodation?: string; meals?: string; activities?: string }>;
 };
 
-const SYSTEM = `You are Goldfinch's content co-pilot for staff using the Goldfinch Adventures CMS — an East Africa travel brand (Tanzania, Kenya, Rwanda, Zanzibar). Write warm, confident, premium-but-simple marketing copy that builds traveler confidence. Be concrete and specific to East Africa. Do NOT invent or state exact prices, availability, dates, permit fees, or guarantees — staff add those. Output ONLY what is asked, with no preamble, labels, or markdown fences.`;
+const SYSTEM = `You are Emnel's content co-pilot for staff using the Emnel Adventures CMS — a Tanzania safari brand (Serengeti, Ngorongoro, Kilimanjaro, Zanzibar; Kenya/Masai Mara combos). Write warm, confident, premium-but-simple marketing copy that builds traveler confidence. Be concrete and specific to Tanzania safaris. Do NOT invent or state exact prices, availability, dates, permit fees, or guarantees — staff add those. Output ONLY what is asked, with no preamble, labels, or markdown fences.`;
 
 const ctxLine = (c: AssistContext): string => {
   const bits = [

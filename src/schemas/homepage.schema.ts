@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const extraData = z.union([z.record(z.unknown()), z.array(z.unknown())]).optional().nullable();
+const imageUrl = z.union([z.string().url(), z.literal('')]);
 
 export const homepageSectionCreateSchema = z.object({
   section_key: z
@@ -10,7 +11,7 @@ export const homepageSectionCreateSchema = z.object({
   title: z.string().optional().nullable(),
   subtitle: z.string().optional().nullable(),
   content: z.string().optional().nullable(),
-  image_url: z.union([z.string().url(), z.literal('')]).optional().nullable(),
+  image_url: imageUrl.optional().nullable(),
   button_text: z.string().optional().nullable(),
   button_url: z.string().optional().nullable(),
   extra_data: extraData,

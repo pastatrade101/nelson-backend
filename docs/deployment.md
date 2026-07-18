@@ -39,6 +39,7 @@ make deploy            # == docker compose up -d --build
 
 ```
 make deploy            Rebuild & (re)start the site
+make db-pipeline       Apply schema + migrations + seed
 make backfill          Generate thumbnails for old images (one-time)
 make ps                Show running containers
 make logs-backend      Tail backend logs
@@ -58,10 +59,17 @@ in `production` with the default). It signs both admin and trip-portal sessions.
 ## Database migrations
 
 Migrations are plain SQL in `database/migrations/` (dated filenames). The DB is
-Supabase, and migrations are applied **manually**:
+Supabase, and schema + migrations + seed are applied through one backend command:
 
-1. Open the **Supabase dashboard → SQL editor**.
-2. Paste the contents of the new migration file and run it.
+```bash
+npm run db:pipeline
+```
+
+The command requires a raw Postgres connection string in `.env`:
+
+```bash
+SUPABASE_DB_URL=postgresql://...
+```
 
 Migrations are written idempotently (`create table if not exists`, `add column if
 not exists`) so re-running is safe. See [database.md](database.md) for the list and
@@ -77,6 +85,7 @@ docker exec -it tour-site-api-server npm run <script>:prod
 
 | Script | Purpose |
 |--------|---------|
+| `db:pipeline:prod` | Apply `schema.sql`, dated migrations, and `seed.sql` using `SUPABASE_DB_URL` |
 | `backfill:thumbnails:prod` | Generate webp thumbnails for previously uploaded images (run once after the media-thumbnails migration) |
 | `email:test:prod <to>` | Send a test email to verify the configured provider |
 | `ai:nightly:prod` | Nightly maintenance (analytics + AI data retention purges) |
@@ -132,7 +141,7 @@ A `403 ... domain is not verified` error means the provider is reachable but
 ## Routine deploy checklist
 
 1. `git pull` the backend and/or frontend repos on the server.
-2. Apply any new DB migration in the Supabase SQL editor.
-3. Update `.env` if new variables were added.
+2. Update `.env` if new variables were added.
+3. Apply DB schema/migrations/seed: `make db-pipeline`.
 4. `make deploy`.
 5. Smoke-test the affected feature.

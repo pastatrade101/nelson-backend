@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import type { Request } from 'express';
 import { env } from '../config/env';
 import { supabase } from '../config/supabase';
-import { GOLDFINCH_ADVISOR_TOOLS } from '../prompts/goldfinch-advisor.prompt';
+import { EMNEL_ADVISOR_TOOLS } from '../prompts/emnel-advisor.prompt';
 import { createMessage, type AnthropicMessage, type AnthropicRole } from './anthropic.service';
 import { budgetFallbackMessage, getBudgetStatus } from './ai-cost-control.service';
 import { classifyMessage } from './ai-router.service';
@@ -159,7 +159,7 @@ const buildActions = async (recommendations: Recommendation[], handoff: boolean)
   const settings = (await getSettings()).output as { whatsapp_number?: string; whatsapp_default_message?: string };
   const digits = String(settings.whatsapp_number ?? '').replace(/\D/g, '');
   if (digits) {
-    const text = String(settings.whatsapp_default_message ?? 'Hi Goldfinch, I would like help planning a trip.');
+    const text = String(settings.whatsapp_default_message ?? 'Hi Emnel, I would like help planning a safari.');
     actions.push({ type: 'whatsapp', label: 'Continue on WhatsApp', url: `https://wa.me/${digits}?text=${encodeURIComponent(text)}` });
   }
   if (recommendations.length) actions.push({ type: 'booking_request', label: 'Create a booking request' });
@@ -267,13 +267,13 @@ export const runAdvisorTurn = async (input: AdvisorTurnInput): Promise<AdvisorTu
   if (!decision.needsAi) {
     if (decision.route === 'cms_contact_no_ai') {
       const s = (await getSettings()).output as Record<string, unknown>;
-      const reply = `You can reach Goldfinch at ${s.contact_email || 'our contact page'}${s.contact_phone ? ` or ${s.contact_phone}` : ''}.${s.business_hours ? ` Hours: ${s.business_hours}.` : ''} ${s.response_time ?? ''}`.trim();
+      const reply = `You can reach Emnel at ${s.contact_email || 'our contact page'}${s.contact_phone ? ` or ${s.contact_phone}` : ''}.${s.business_hours ? ` Hours: ${s.business_hours}.` : ''} ${s.response_time ?? ''}`.trim();
       return finalize(reply, { routeType: decision.route, aiCalled: false, status: 'skipped_no_ai_needed' });
     }
     if (decision.route === 'cms_search_no_ai') {
       const recs = await searchTours({}, ctx);
       const reply = recs.length
-        ? 'Here are a few popular Goldfinch trips to start with — tell me your dates, group and budget and I can narrow them down.'
+        ? 'Here are a few popular Emnel safaris to start with — tell me your dates, group and budget and I can narrow them down.'
         : 'I can help you find the right trip. Tell me your destination, dates, group size and budget.';
       return finalize(reply, { recommendations: recs, routeType: decision.route, aiCalled: false, status: 'skipped_no_ai_needed' });
     }
@@ -291,7 +291,7 @@ export const runAdvisorTurn = async (input: AdvisorTurnInput): Promise<AdvisorTu
       return finalize(answer, { routeType: decision.route, aiCalled: false, status: 'skipped_no_ai_needed' });
     }
     const s = (await getSettings()).output as Record<string, unknown>;
-    const reply = `Booking with Goldfinch is simple: tell us what you want, we tailor a plan and send a booking request for review — no payment to start. ${s.response_time ?? 'A specialist will follow up shortly.'}`;
+    const reply = `Booking with Emnel is simple: tell us what you want, we tailor a plan and send a booking request for review — no payment to start. ${s.response_time ?? 'A specialist will follow up shortly.'}`;
     return finalize(reply, { routeType: decision.route, aiCalled: false, status: 'skipped_no_ai_needed' });
   }
 
@@ -330,7 +330,7 @@ export const runAdvisorTurn = async (input: AdvisorTurnInput): Promise<AdvisorTu
       const res = await createMessage({
         model,
         messages,
-        tools: GOLDFINCH_ADVISOR_TOOLS as unknown as ReadonlyArray<Record<string, unknown>>,
+        tools: EMNEL_ADVISOR_TOOLS as unknown as ReadonlyArray<Record<string, unknown>>,
         dynamicContext,
         maxTokens: env.AI_MAX_OUTPUT_TOKENS
       });
@@ -366,12 +366,12 @@ export const runAdvisorTurn = async (input: AdvisorTurnInput): Promise<AdvisorTu
     // generic visitor fallback can be diagnosed (bad key, model id, 4xx, etc.).
     console.error(`[advisor] Anthropic call failed (model=${model}): ${errorMessage}`);
     return finalize(
-      "I'm having trouble reaching our planning engine right now. A Goldfinch specialist can help you directly — would you like to continue on WhatsApp?",
+      "I'm having trouble reaching our planning engine right now. An Emnel specialist can help you directly — would you like to continue on WhatsApp?",
       { routeType: decision.route, aiCalled: true, model, status: 'failed', usage: totalUsage, errorMessage }
     );
   }
 
-  const reply = finalText.trim() || 'Let me connect you with a Goldfinch specialist who can help further.';
+  const reply = finalText.trim() || 'Let me connect you with an Emnel specialist who can help further.';
 
   // Cache general, reusable answers (never trip/price/availability content) so
   // the next similar question skips Anthropic (§10). storeAnswerCache itself
@@ -394,7 +394,7 @@ export const runAdvisorTurn = async (input: AdvisorTurnInput): Promise<AdvisorTu
 export const handoffConversation = async (conversationId: string, req: Request, notes?: string) => {
   const { data: context } = await supabase.from('ai_lead_context').select('*').eq('conversation_id', conversationId).maybeSingle();
   const hubspot = context?.email
-    ? await syncToHubSpot('lead', { ...context, message: notes, source: 'Goldfinch AI Travel Advisor' })
+    ? await syncToHubSpot('lead', { ...context, message: notes, source: 'Emnel AI Safari Advisor' })
     : { configured: false, skipped: true };
 
   await supabase

@@ -71,20 +71,20 @@ export const sendEmail = async (mail: Mail): Promise<boolean> => {
 export const emailLayout = (heading: string, bodyHtml: string, cta?: { label: string; url: string }): string => `
   <div style="margin:0;background:#f4f6f4;padding:24px;font-family:Inter,Arial,sans-serif;color:#18211f">
     <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e6ebe7">
-      <div style="background:#0f2f24;padding:20px 28px">
-        <span style="color:#d9a441;font-weight:800;font-size:18px;letter-spacing:.3px">Goldfinch Adventures</span>
+      <div style="background:#1C1A16;padding:20px 28px">
+        <span style="color:#C5A265;font-weight:800;font-size:18px;letter-spacing:.3px">Emnel Adventures</span>
       </div>
       <div style="padding:28px">
-        <h1 style="margin:0 0 12px;font-size:20px;color:#0f2f24">${heading}</h1>
+        <h1 style="margin:0 0 12px;font-size:20px;color:#1C1A16">${heading}</h1>
         <div style="font-size:15px;line-height:1.6;color:#384540">${bodyHtml}</div>
         ${
           cta
-            ? `<a href="${cta.url}" style="display:inline-block;margin-top:20px;background:#0f2f24;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:10px">${cta.label}</a>`
+            ? `<a href="${cta.url}" style="display:inline-block;margin-top:20px;background:#1C1A16;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:10px">${cta.label}</a>`
             : ''
         }
       </div>
       <div style="padding:16px 28px;border-top:1px solid #e6ebe7;font-size:12px;color:#8a948f">
-        Goldfinch Adventures · East Africa travel specialists
+        Emnel Adventures · Tanzania safari specialists · Arusha
       </div>
     </div>
   </div>`;

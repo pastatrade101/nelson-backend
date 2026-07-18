@@ -43,6 +43,8 @@ import tourInclusionsRoutes from './routes/tour-inclusions.routes';
 import tourExclusionsRoutes from './routes/tour-exclusions.routes';
 import tourImagesRoutes from './routes/tour-images.routes';
 import toursRoutes from './routes/tours.routes';
+import itineraryImportRoutes from './routes/itinerary-import.routes';
+import csvImportRoutes from './routes/csv-import.routes';
 import uploadRoutes from './routes/upload.routes';
 import usersRoutes from './routes/users.routes';
 import { errorMiddleware } from './middleware/error.middleware';
@@ -69,10 +71,11 @@ app.use(
 );
 app.use(
   rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 300,
+    windowMs: env.RATE_LIMIT_WINDOW_MS,
+    limit: env.RATE_LIMIT_MAX,
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    skip: (req) => req.method === 'OPTIONS' || req.path === '/api/health'
   })
 );
 app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
@@ -89,6 +92,8 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiTravelAdvisorRoutes);
 app.use('/api/tours', toursRoutes);
+app.use('/api/itinerary-import', itineraryImportRoutes);
+app.use('/api/import', csvImportRoutes);
 app.use('/api/tour-inclusions', tourInclusionsRoutes);
 app.use('/api/tour-exclusions', tourExclusionsRoutes);
 app.use('/api/tour-images', tourImagesRoutes);

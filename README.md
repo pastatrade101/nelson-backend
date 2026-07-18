@@ -33,6 +33,7 @@ Health check: `GET /api/health`.
 ## Ops scripts
 Run inside the container in production: `docker exec -it tour-site-api-server npm run <name>:prod`
 ```bash
+npm run db:pipeline          # apply schema + migrations + seed
 npm run backfill:thumbnails   # generate webp thumbnails for old images
 npm run email:test <to>       # send a test email via the configured provider
 npm run ai:nightly            # analytics + AI data-retention purges
@@ -40,7 +41,7 @@ npm run ai:nightly            # analytics + AI data-retention purges
 
 ## Deploy
 Docker Compose on the VPS — see [docs/deployment.md](docs/deployment.md). In short:
-`git pull` → apply any new migration in the Supabase SQL editor → `make deploy`.
+`git pull` → `npm run db:pipeline` → `make deploy`.
 
 Secrets (`SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, `RESEND_API_KEY`,
 `HUBSPOT_ACCESS_TOKEN`, …) are read from env only and never exposed to the frontend.

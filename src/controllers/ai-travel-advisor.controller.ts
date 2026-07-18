@@ -81,7 +81,7 @@ export const chatWithAdvisor = asyncHandler(async (req, res) => {
 
   // JSON (back-compat): keep conversationId + reply + tourMatches for the
   // existing widget, plus the full structured payload for the new one.
-  return sendSuccess(res, 'Goldfinch AI Travel Advisor response generated.', {
+  return sendSuccess(res, 'Emnel AI Safari Advisor response generated.', {
     conversationId: result.conversationId,
     reply: result.reply,
     tourMatches: result.tourMatches,

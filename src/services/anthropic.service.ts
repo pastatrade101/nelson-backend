@@ -1,5 +1,5 @@
 import { env } from '../config/env';
-import { GOLDFINCH_ADVISOR_SYSTEM_PROMPT, GOLDFINCH_ADVISOR_TOOLS } from '../prompts/goldfinch-advisor.prompt';
+import { EMNEL_ADVISOR_SYSTEM_PROMPT, EMNEL_ADVISOR_TOOLS } from '../prompts/emnel-advisor.prompt';
 import { emptyUsage, type AiUsage } from './ai-usage.service';
 
 // ----------------------------------------------------------------------------
@@ -47,9 +47,9 @@ export type AnthropicResult = {
 export type CreateMessageParams = {
   model: string;
   messages: AnthropicMessage[];
-  /** Override the default Goldfinch system prompt if needed. */
+  /** Override the default Emnel system prompt if needed. */
   system?: string;
-  /** Pass the Goldfinch tool set by default; set [] to disable tools. */
+  /** Pass the Emnel tool set by default; set [] to disable tools. */
   tools?: ReadonlyArray<Record<string, unknown>>;
   /** Per-request context (lead/CMS/page) appended as an UNCACHED system block. */
   dynamicContext?: string;
@@ -104,11 +104,11 @@ const buildTools = (tools: ReadonlyArray<Record<string, unknown>>): Array<Record
 };
 
 const buildBody = (params: CreateMessageParams, stream: boolean): Record<string, unknown> => {
-  const tools = params.tools ?? GOLDFINCH_ADVISOR_TOOLS;
+  const tools = params.tools ?? EMNEL_ADVISOR_TOOLS;
   const body: Record<string, unknown> = {
     model: params.model,
     max_tokens: params.maxTokens ?? env.AI_MAX_OUTPUT_TOKENS,
-    system: buildSystem(params.system ?? GOLDFINCH_ADVISOR_SYSTEM_PROMPT, params.dynamicContext),
+    system: buildSystem(params.system ?? EMNEL_ADVISOR_SYSTEM_PROMPT, params.dynamicContext),
     messages: params.messages
   };
   if (typeof params.temperature === 'number') body.temperature = params.temperature;

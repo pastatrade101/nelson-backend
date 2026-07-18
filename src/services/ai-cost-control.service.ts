@@ -87,7 +87,7 @@ export const getBudgetStatus = async (): Promise<BudgetStatus> => {
 
 /** Friendly, brand-safe message shown when the assistant is degraded/limited. */
 export const budgetFallbackMessage =
-  "I've reached today's automated assistant limit, but you can continue with a Goldfinch specialist on WhatsApp.";
+  "I've reached today's automated assistant limit, but you can continue with an Emnel specialist on WhatsApp.";
 
 // ── Per-session / per-IP message counters (weak IP signal per §6) ────────────
 

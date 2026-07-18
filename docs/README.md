@@ -21,7 +21,7 @@ AI travel advisor.
 ## Quick links
 
 - **Deploy a change:** `make deploy` (see [deployment.md](deployment.md))
-- **Apply a DB migration:** paste the SQL into the Supabase SQL editor (see [database.md](database.md))
+- **Apply DB schema/migrations/seed:** `npm run db:pipeline` (see [database.md](database.md))
 - **Set up email:** [deployment.md → Email](deployment.md#email-resend-or-smtp)
 - **Run a backend script:** `docker exec -it tour-site-api-server npm run <script>:prod`
 

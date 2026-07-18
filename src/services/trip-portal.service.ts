@@ -93,14 +93,14 @@ export const sendTripLinkEmail = async (bookingId: string, adminId: string | nul
     const tripTitle = ((b.tours as { title?: string } | null)?.title) ?? 'your East Africa trip';
     emailed = await sendEmail({
       to,
-      subject: `Your Goldfinch trip portal — ${String(b.booking_code ?? '')}`,
+      subject: `Your Emnel trip portal — ${String(b.booking_code ?? '')}`,
       html: emailLayout(
         `Hi ${name}, here's your trip portal`,
         `<p>You can view <strong>${tripTitle}</strong>, see your itinerary and payment balance, and message your specialist any time — no password needed.</p>
          <p style="font-size:13px;color:#8a948f">This secure link is just for you. Please don't forward it.</p>`,
         { label: 'Open my trip', url }
       ),
-      text: `Hi ${name}, open your Goldfinch trip portal here: ${url}`
+      text: `Hi ${name}, open your Emnel trip portal here: ${url}`
     });
   }
 

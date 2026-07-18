@@ -9,15 +9,43 @@ writes data.
 - **Migrations:** `database/migrations/*.sql` (dated, incremental changes applied
   to existing databases).
 
-## Applying migrations
+## Applying schema, migrations, and seed
 
-Migrations are applied **manually** via the Supabase dashboard:
+The backend has a single database pipeline command. It applies:
 
-1. **Supabase → SQL editor.**
-2. Paste the migration file's contents and run it.
+1. `database/schema.sql`
+2. every dated SQL file in `database/migrations/` in filename order
+3. `database/seed.sql`
+
+`database/migrations/000-apply-all.sql` is skipped because it is a bundle of
+dated migrations, not a separate migration step.
+
+Set a raw Postgres connection string in `backend/.env`:
+
+```bash
+SUPABASE_DB_URL=postgresql://...
+```
+
+Then run:
+
+```bash
+npm run db:pipeline
+```
+
+To inspect the exact order before applying SQL:
+
+```bash
+npm run db:pipeline -- --dry-run
+```
+
+To include demo content after the normal seed:
+
+```bash
+npm run db:pipeline -- --demo
+```
 
 All migrations are idempotent (`create table if not exists`, `add column if not
-exists`), so re-running is safe. Apply any not-yet-applied files in date order.
+exists`), so re-running is safe.
 
 ### Migration history (apply oldest → newest)
 

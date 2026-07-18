@@ -7,7 +7,7 @@ export const hubspotLeadSchema = z.object({
   full_name: z.string().min(2).max(160),
   message: z.string().max(2000).optional(),
   phone: z.string().max(80).optional(),
-  source: z.string().max(120).default('Goldfinch Travel Platform'),
+  source: z.string().max(120).default('Emnel Adventures'),
   stage: z.string().max(80).default('New Lead')
 });
 
