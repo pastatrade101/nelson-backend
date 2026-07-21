@@ -9,8 +9,9 @@ import {
 } from '../utils/supabase-helpers';
 
 const select = '*, destinations(name,slug,country), tour_categories(name,slug)';
-// Detail view also embeds the day-by-day itinerary and what's included/excluded.
-const detailSelect = `${select}, itinerary_days(day_number,title,description,accommodation,meals,activities,image_url), tour_inclusions(title,sort_order), tour_exclusions(title,sort_order)`;
+// Detail view also embeds the day-by-day itinerary, what's included/excluded,
+// the pricing options and the tour gallery images.
+const detailSelect = `${select}, itinerary_days(day_number,title,description,accommodation,meals,activities,image_url), tour_inclusions(title,sort_order), tour_exclusions(title,sort_order), tour_price_options(id,tour_id,title,label,price,currency,price_type,description,sort_order,created_at,updated_at), tour_images(id,tour_id,image_url,alt_text,caption,sort_order,is_featured,created_at,updated_at)`;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const listTours = asyncHandler(async (req, res) => {
