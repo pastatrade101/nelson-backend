@@ -159,33 +159,6 @@ export const ENTITIES: Record<string, Entity> = {
       example: ['Namiri Plains', 'namiri-plains', 'Serengeti', 'luxury', 'tented_camp', 'The best big-cat camp in the eastern Serengeti.', 'Unmatched cheetah and lion sightings; our top pick for photographers.', 'Photographers|Couples|Big cats', 'https://images.unsplash.com/photo-1523805009345-7448845a9e53', '1200', 'USD', '9', '7', 'https://example.com', 'true', 'published']
     }
   },
-  countries: {
-    table: 'countries',
-    label: 'Countries',
-    description: 'Country pages for combined circuits (Tanzania, Kenya).',
-    permission: 'countries.create',
-    keys: ['slug'],
-    slugFrom: 'name',
-    userFields: true,
-    fields: [
-      { name: 'name', required: true },
-      { name: 'slug' },
-      { name: 'hero_image_url' },
-      { name: 'intro_text' },
-      { name: 'best_months', type: 'list' },
-      { name: 'visa_info' },
-      { name: 'currency' },
-      { name: 'capital' },
-      { name: 'is_featured', type: 'bool' },
-      { name: 'status', type: 'status' },
-      { name: 'meta_title' },
-      { name: 'meta_description' }
-    ],
-    template: {
-      headers: ['name', 'slug', 'hero_image_url', 'intro_text', 'best_months', 'visa_info', 'currency', 'capital', 'is_featured', 'status', 'meta_title', 'meta_description'],
-      example: ['Tanzania', 'tanzania', 'https://images.unsplash.com/photo-1516426122078-c23e76319801', 'Home of the Serengeti, Ngorongoro, Kilimanjaro and Zanzibar.', 'Jun|Jul|Aug|Sep|Oct', 'Visa on arrival ~$50 USD for most nationalities.', 'TZS', 'Dodoma', 'true', 'published', 'Tanzania Safaris | Emnel Adventures', 'Private Tanzania safaris planned by local experts in Arusha.']
-    }
-  },
   'blog-categories': {
     table: 'blog_categories',
     label: 'Journal Categories',
@@ -332,8 +305,7 @@ export const RESET_TABLES = [
   'lodges',
   'tours',
   'tour_categories',
-  'destinations',
-  'countries'
+  'destinations'
 ] as const;
 
 export type ResetResult = { table: string; deleted: number; error?: string };
