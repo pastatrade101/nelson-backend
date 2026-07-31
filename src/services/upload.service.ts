@@ -17,7 +17,10 @@ const extensionFromMime = (mimeType: string) => {
     'image/jpeg': 'jpg',
     'image/png': 'png',
     'text/json': 'json',
-    'image/webp': 'webp'
+    'image/webp': 'webp',
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/quicktime': 'mov'
   };
 
   return map[mimeType];
@@ -102,6 +105,12 @@ export const uploadImageToStorage = async (file: Express.Multer.File, folder = '
   }
 
   return { ...result, thumbnailPath, thumbnailUrl };
+};
+
+// Upload a video (mp4/webm/mov). No thumbnail is generated (sharp can't decode
+// video); the media record just references the file itself.
+export const uploadVideoToStorage = async (file: Express.Multer.File, folder = 'videos') => {
+  return uploadToStorage(file, folder, ['video/mp4', 'video/webm', 'video/quicktime'], 'Only mp4, webm, or mov videos are allowed.');
 };
 
 export const uploadLottieToStorage = async (file: Express.Multer.File, folder = 'lottie') => {

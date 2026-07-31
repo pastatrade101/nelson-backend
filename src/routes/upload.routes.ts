@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { deleteImage, uploadImage, uploadLottie } from '../controllers/upload.controller';
+import { deleteImage, uploadImage, uploadLottie, uploadVideo } from '../controllers/upload.controller';
 import { authenticate } from '../middleware/auth.middleware';
 import { requirePermission } from '../middleware/permission.middleware';
 import { AppError } from '../utils/api-response';
@@ -16,6 +16,22 @@ const imageUpload = multer({
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedMimeTypes.includes(file.mimetype)) {
       callback(new AppError('Only jpg, jpeg, png, and webp images are allowed.', 400));
+      return;
+    }
+
+    callback(null, true);
+  }
+});
+
+const videoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024
+  },
+  fileFilter: (_req, file, callback) => {
+    const allowedMimeTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      callback(new AppError('Only mp4, webm, or mov videos are allowed.', 400));
       return;
     }
 
@@ -41,6 +57,7 @@ const lottieUpload = multer({
 });
 
 router.post('/image', authenticate, requirePermission('media.upload'), imageUpload.single('image'), uploadImage);
+router.post('/video', authenticate, requirePermission('media.upload'), videoUpload.single('video'), uploadVideo);
 router.post('/lottie', authenticate, requirePermission('media.upload'), lottieUpload.single('lottie'), uploadLottie);
 router.delete('/image', authenticate, requirePermission('media.delete'), deleteImage);
 
