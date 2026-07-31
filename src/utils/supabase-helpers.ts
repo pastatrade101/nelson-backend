@@ -86,7 +86,10 @@ export const listRecords = async (req: Request, res: Response, options: ListOpti
 
   for (const filter of options.filters ?? []) {
     const value = getQueryString(req.query, filter);
-    if (value && value !== 'all') query = query.eq(filter, value);
+    if (!value || value === 'all') continue;
+    // "null" filters to rows where the column IS NULL (e.g. general, unattached
+    // FAQs); any other value is an exact match.
+    query = value === 'null' ? query.is(filter, null) : query.eq(filter, value);
   }
 
   const { data, error, count } = await query.range(from, to);
