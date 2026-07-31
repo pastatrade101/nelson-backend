@@ -207,9 +207,9 @@ export const ENTITIES: Record<string, Entity> = {
   faqs: {
     table: 'faqs',
     label: 'FAQs',
-    description: 'Frequently asked questions (grouped by a free-text category).',
+    description: 'Frequently asked questions. Leave "destination" blank for a general FAQ, or set it to attach the question to a specific destination.',
     permission: 'faqs.create',
-    keys: ['question'],
+    keys: ['question', 'destination_id'],
     fields: [
       { name: 'question', required: true },
       { name: 'answer', required: true },
@@ -217,9 +217,10 @@ export const ENTITIES: Record<string, Entity> = {
       { name: 'sort_order', type: 'int' },
       { name: 'status', type: 'status' }
     ],
+    refs: [{ col: 'destination', table: 'destinations', fk: 'destination_id', create: { status: 'published' } }],
     template: {
-      headers: ['question', 'answer', 'category', 'sort_order', 'status'],
-      example: ['Is Tanzania safe for safaris?', 'Yes — Tanzania is one of the most established safari destinations in the world. We plan around trusted lodges, guides and routes.', 'Safety', '1', 'published']
+      headers: ['question', 'answer', 'category', 'destination', 'sort_order', 'status'],
+      example: ['Is the Serengeti worth visiting outside migration season?', 'Yes — resident wildlife keeps game viewing strong year-round, particularly in Central Serengeti and the east, with fewer vehicles and better rates.', 'General', 'serengeti', '1', 'published']
     }
   },
   pricing: {
@@ -386,9 +387,13 @@ export const importEntity = async (entityKey: string, csvText: string, userId?: 
         }
       }
 
-      // idempotent match on the natural key(s)
+      // idempotent match on the natural key(s). A null key part (e.g. a general
+      // FAQ with no destination) is matched with IS NULL, not = null.
       let query = supabase.from(cfg.table).select('id');
-      for (const k of cfg.keys) query = query.eq(k, payload[k] as string);
+      for (const k of cfg.keys) {
+        const v = payload[k];
+        query = v === null || v === undefined ? query.is(k, null) : query.eq(k, v as string);
+      }
       const existing = await query.limit(1).maybeSingle();
 
       const title = String(payload.title ?? payload.name ?? payload.question ?? payload.client_name ?? '');
