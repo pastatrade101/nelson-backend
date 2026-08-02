@@ -13,6 +13,8 @@
     "ai:nightly:prod": "node dist/jobs/ai-nightly.js",
     "backfill:thumbnails": "tsx src/scripts/backfill-thumbnails.ts",
     "backfill:thumbnails:prod": "node dist/scripts/backfill-thumbnails.js",
+    "backfill:responsive": "tsx src/scripts/backfill-responsive.ts",
+    "backfill:responsive:prod": "node dist/scripts/backfill-responsive.js",
     "email:test": "tsx src/scripts/email-test.ts",
     "email:test:prod": "node dist/scripts/email-test.js"
   },
@@ -20,6 +22,7 @@
     "@google-analytics/data": "^6.1.0",
     "@supabase/supabase-js": "^2.45.4",
     "bcryptjs": "^2.4.3",
+    "blurhash": "^2.0.5",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
