@@ -51,6 +51,14 @@ const envSchema = z.object({
   GOOGLE_CLIENT_EMAIL: z.string().optional().or(z.literal('')),
   GOOGLE_PRIVATE_KEY: z.string().optional().or(z.literal('')),
 
+  // ── Microsoft Clarity Data Export API — backend only ──────────────────────
+  // Bearer token generated in Clarity → Settings → Data export. Powers the real
+  // UX-intelligence metrics (rage/dead clicks, scroll depth, sessions). Leave
+  // blank to run without it (dashboard shows deep-links + an onboarding state).
+  // The public project id (for building deep-links) is optional here.
+  CLARITY_API_TOKEN: z.string().optional().or(z.literal('')),
+  CLARITY_PROJECT_ID: z.string().optional().or(z.literal('')),
+
   // Analytics event retention: delete analytics_events older than N days (nightly).
   ANALYTICS_RETENTION_DAYS: z.coerce.number().int().default(180),
 

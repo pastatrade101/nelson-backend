@@ -10,6 +10,9 @@ import {
 } from '../services/analytics.service';
 import { env } from '../config/env';
 import { getTraffic, isGa4Configured } from '../services/ga4.service';
+import { getClarityInsights, isClarityConfigured } from '../services/clarity.service';
+import { getWebsiteIntelligence } from '../services/website-intelligence.service';
+import { getUxInsights } from '../services/ux-insights.service';
 import { asyncHandler } from '../utils/async-handler';
 import { sendSuccess } from '../utils/api-response';
 import { getQueryString } from '../utils/query';
@@ -60,10 +63,35 @@ export const getAnalyticsTraffic = asyncHandler(async (req, res) => {
   return sendSuccess(res, 'GA4 traffic fetched.', data);
 });
 
+// Microsoft Clarity real aggregates (Data Export API). { configured: false } when
+// no CLARITY_API_TOKEN — the dashboard then shows deep-links + an onboarding state.
+export const getAnalyticsClarity = asyncHandler(async (req, res) => {
+  const force = getQueryString(req.query, 'refresh') === '1';
+  const data = await getClarityInsights(force);
+  return sendSuccess(res, 'Clarity UX insights fetched.', data);
+});
+
+// Website Intelligence — a deterministic rules engine (no LLM) over the real
+// analytics: health/category scores, executive summary, rule-based alerts,
+// prioritized actions, previous-period benchmarks and a real event timeline.
+export const getAnalyticsIntelligence = asyncHandler(async (req, res) => {
+  const data = await getWebsiteIntelligence(rangeFromQuery(req));
+  return sendSuccess(res, 'Website intelligence fetched.', data);
+});
+
+// AI analyst summary + supporting recommendations, grounded strictly in the real
+// metrics. Complements the deterministic engine. { available:false } when data/AI missing.
+export const getAnalyticsUxInsights = asyncHandler(async (req, res) => {
+  const force = getQueryString(req.query, 'refresh') === '1';
+  const data = await getUxInsights(rangeFromQuery(req), force);
+  return sendSuccess(res, 'AI analyst summary fetched.', data);
+});
+
 // Integration status (no secrets returned) — powers /admin/settings/integrations.
 export const getIntegrations = asyncHandler(async (_req, res) => {
   return sendSuccess(res, 'Integration status.', {
     ga4: { configured: isGa4Configured() },
+    clarity: { configured: isClarityConfigured(), projectId: env.CLARITY_PROJECT_ID || null },
     hubspot: { configured: Boolean(env.HUBSPOT_ACCESS_TOKEN), portalId: env.HUBSPOT_PORTAL_ID || null },
     whatsappCloudApi: { configured: Boolean(env.WHATSAPP_ACCESS_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID) },
     aiAdvisor: { configured: Boolean(env.ANTHROPIC_API_KEY) },

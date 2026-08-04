@@ -1,10 +1,13 @@
 import { Router } from 'express';
 import {
+  getAnalyticsClarity,
   getAnalyticsFunnel,
   getAnalyticsLeads,
   getAnalyticsOverview,
   getAnalyticsTimeseries,
   getAnalyticsTraffic,
+  getAnalyticsIntelligence,
+  getAnalyticsUxInsights,
   getIntegrations,
   trackEvent
 } from '../controllers/analytics.controller';
@@ -25,6 +28,9 @@ router.get('/leads', authenticate, requirePermission('dashboard.view'), getAnaly
 router.get('/funnel', authenticate, requirePermission('dashboard.view'), getAnalyticsFunnel);
 router.get('/timeseries', authenticate, requirePermission('dashboard.view'), getAnalyticsTimeseries);
 router.get('/traffic', authenticate, requirePermission('dashboard.view'), getAnalyticsTraffic);
+router.get('/clarity', authenticate, requirePermission('dashboard.view'), getAnalyticsClarity);
+router.get('/website-intelligence', authenticate, requirePermission('dashboard.view'), getAnalyticsIntelligence);
+router.get('/ux-insights', authenticate, requirePermission('dashboard.view'), getAnalyticsUxInsights);
 router.get('/integrations', authenticate, requirePermission('dashboard.view'), getIntegrations);
 
 export default router;
