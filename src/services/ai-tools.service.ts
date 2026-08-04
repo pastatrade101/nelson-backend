@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase';
 import { semanticTourScores } from './ai-retrieval.service';
+import { normalizeTier } from '../utils/tiers';
 
 // ----------------------------------------------------------------------------
 // Native tool implementations (§3.4, §9, §11, §13, §25). The model orchestrates
@@ -142,8 +143,8 @@ export const searchTours = async (intent: ToursIntent, ctx: AdvisorContext): Pro
       raw += 15;
       reasons.push(`About ${durationDays} days, close to your plan`);
     }
-    // Budget / comfort match (15)
-    if (intent.budget_tier && norm(intent.budget_tier) === norm(String(tour.budget_tier ?? ''))) {
+    // Budget / comfort match (15) — alias-tolerant across the tier rename.
+    if (normalizeTier(intent.budget_tier) && normalizeTier(intent.budget_tier) === normalizeTier(tour.budget_tier as string)) {
       raw += 15;
       reasons.push('Matches your comfort level');
     }

@@ -48,7 +48,7 @@ export const EMNEL_ADVISOR_TOOLS = [
         experience: { type: 'string', description: 'safari | kilimanjaro | zanzibar | beach | combined | unsure' },
         persona_tags: { type: 'array', items: { type: 'string' }, description: 'e.g. family, couples, luxury, adventure, wildlife.' },
         duration_days: { type: 'integer', description: 'Preferred trip length in days.' },
-        budget_tier: { type: 'string', description: 'budget | mid_range | luxury | unsure' },
+        budget_tier: { type: 'string', description: 'essential | classic | luxury | ultra_luxury | unsure' },
         travelers: { type: 'integer', description: 'Total number of travelers.' }
       },
       required: []

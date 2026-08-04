@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import { normalizeTier } from '../utils/tiers';
 
 type LeadContext = {
   budget_tier?: string;
@@ -39,7 +40,7 @@ export const matchToursForLead = async (context: LeadContext) => {
         score += 20;
       }
 
-      if (context.budget_tier && normalized(context.budget_tier) === normalized(String(tour.budget_tier ?? ''))) score += 10;
+      if (normalizeTier(context.budget_tier) && normalizeTier(context.budget_tier) === normalizeTier(tour.budget_tier as string)) score += 10;
       if (typeof tour.seats_remaining === 'number' && tour.seats_remaining < 5) score += 5;
 
       return {
