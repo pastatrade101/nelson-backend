@@ -8,6 +8,7 @@
 // importer (itinerary-import.service) which this module delegates to.
 import { supabase } from '../config/supabase';
 import { rolePermissions, type PermissionKey } from '../config/permissions';
+import { normalizeTier } from '../utils/tiers';
 import { parseCsv } from './itinerary-import.service';
 import { importItineraries, type ImportResult } from './itinerary-import.service';
 
@@ -34,7 +35,9 @@ const normStatus = (v: string): 'draft' | 'published' | 'archived' | undefined =
 };
 
 type FieldType = 'text' | 'int' | 'number' | 'bool' | 'list' | 'status';
-type Field = { name: string; type?: FieldType; required?: boolean };
+// `coerce` runs after the type transform — used to normalise controlled
+// vocabularies (e.g. comfort tiers) so imports can't violate DB constraints.
+type Field = { name: string; type?: FieldType; required?: boolean; coerce?: (value: unknown) => unknown };
 type Ref = { col: string; table: string; fk: string; create?: Record<string, unknown>; required?: boolean };
 type Entity = {
   table: string;
@@ -138,7 +141,7 @@ export const ENTITIES: Record<string, Entity> = {
     fields: [
       { name: 'name', required: true },
       { name: 'slug' },
-      { name: 'accommodation_level' },
+      { name: 'accommodation_level', coerce: (v) => normalizeTier(String(v ?? '')) || undefined },
       { name: 'lodge_type' },
       { name: 'description' },
       { name: 'why_we_recommend' },
@@ -370,7 +373,8 @@ export const importEntity = async (entityKey: string, csvText: string, userId?: 
           payload.slug = slugify(r.slug || r[cfg.slugFrom] || '');
           continue;
         }
-        const value = transform(r[f.name], f.type);
+        let value = transform(r[f.name], f.type);
+        if (f.coerce && value !== undefined) value = f.coerce(value);
         if (f.required && (value === undefined || value === '')) {
           throw new Error(`Missing required "${f.name}".`);
         }

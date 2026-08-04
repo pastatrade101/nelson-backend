@@ -7,6 +7,7 @@
 // new slugs are INSERTED. Category and destination are resolved by slug or name
 // and created on the fly if they don't exist yet.
 import { supabase } from '../config/supabase';
+import { normalizeTier } from '../utils/tiers';
 
 export type ImportRowResult = {
   line: number;
@@ -267,7 +268,7 @@ export const importItineraries = async (csvText: string, userId?: string): Promi
         category_id: categoryId,
         destination_id: destinationId,
         experience_type: r.experience_type || null,
-        budget_tier: r.budget_tier || null,
+        budget_tier: normalizeTier(r.budget_tier) || r.budget_tier?.trim() || null,
         persona_tags: splitList(r.persona_tags),
         duration_days: durationDays,
         duration_nights: toInt(r.duration_nights, Math.max(0, durationDays - 1)),
