@@ -1,9 +1,9 @@
 import { supabase } from '../config/supabase';
 
-const PREFIX = 'GF-BKG';
+const PREFIX = 'EMN-BKG';
 
 /**
- * Generates a unique, human-readable booking code such as `GF-BKG-000001`.
+ * Generates a unique, human-readable booking code such as `EMN-BKG-000001`.
  * Uses the current row count as the sequence base and retries on collision
  * (handles concurrent inserts). Falls back to a timestamp-based code so a
  * booking is never blocked by code generation.
