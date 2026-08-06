@@ -3,6 +3,7 @@ import { asyncHandler } from '../utils/async-handler';
 import { AppError, sendSuccess } from '../utils/api-response';
 import { cleanSearch, getPagination, getQueryString, paginationMeta } from '../utils/query';
 import { getRecordById, softDeleteRecord } from '../utils/supabase-helpers';
+import { sendContactNotification } from '../services/notification.service';
 
 export const createContactMessage = asyncHandler(async (req, res) => {
   const { data, error } = await supabase
@@ -12,6 +13,11 @@ export const createContactMessage = asyncHandler(async (req, res) => {
     .single();
 
   if (error) throw new AppError('Unable to submit contact message.', 500, [error]);
+
+  // Alert the specialist inbox — fire-and-forget so a mail failure never blocks
+  // the submission (mirrors the booking flow).
+  void sendContactNotification(data);
+
   return sendSuccess(res, 'Contact message submitted successfully.', data, 201);
 });
 

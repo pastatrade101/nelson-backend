@@ -41,6 +41,10 @@ export type CrmLead = {
 
 const str = (value: unknown): string => (value == null ? '' : String(value)).trim();
 
+/** Escape user-supplied text before interpolating into notification HTML. */
+const escapeHtml = (value: string): string =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 /** Flattens a booking row (+ its lead_context) into a CRM-ready lead. */
 export const buildLeadFromBooking = (booking: BookingLike): CrmLead => {
   const lc = (booking.lead_context as Record<string, unknown> | null) ?? {};
@@ -147,6 +151,44 @@ export const sendBookingNotification = async (booking: BookingLike): Promise<voi
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[notification] Failed to send booking notification', error);
+  }
+};
+
+/**
+ * Alert the specialist inbox when a public contact-form message arrives. Mirrors
+ * sendBookingNotification: fire-and-forget, never throws, and skips silently when
+ * email transport or SPECIALIST_EMAIL is not configured.
+ */
+export const sendContactNotification = async (message: BookingLike): Promise<void> => {
+  try {
+    const fullName = str(message.full_name);
+    const email = str(message.email);
+    const phone = str(message.phone);
+    const subject = str(message.subject);
+    const body = str(message.message);
+
+    if (env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.info(`[notification] New contact message from ${fullName || 'unknown'} <${email || 'no-email'}>`);
+    }
+
+    if (env.SPECIALIST_EMAIL) {
+      await sendEmail({
+        to: env.SPECIALIST_EMAIL,
+        replyTo: email || undefined,
+        subject: `New contact message — ${subject || fullName || email || 'Website enquiry'}`,
+        html: emailLayout(
+          'New contact message',
+          `<p><strong>${escapeHtml(fullName) || 'A visitor'}</strong> &lt;${escapeHtml(email) || 'no email'}&gt;${phone ? ` · ${escapeHtml(phone)}` : ''}</p>
+           ${subject ? `<p><strong>Subject:</strong> ${escapeHtml(subject)}</p>` : ''}
+           <pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;color:#384540">${escapeHtml(body)}</pre>`
+        ),
+        text: `New contact message\n${fullName} <${email}>${phone ? ` · ${phone}` : ''}\n${subject ? `Subject: ${subject}\n` : ''}\n${body}`
+      });
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[notification] Failed to send contact notification', error);
   }
 };
 
