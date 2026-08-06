@@ -1,6 +1,9 @@
 import { env } from '../config/env';
-import { emailLayout, sendEmail } from './email.service';
+import { detailRows, emailLayout, noteBlock, sendEmail } from './email.service';
 import { syncToHubSpot } from './hubspot.service';
+
+// Public CMS base — used for the "Open in CMS" button in notification emails.
+const ADMIN_URL = 'https://emneladventures.com/admin';
 
 type BookingLike = Record<string, unknown>;
 
@@ -40,10 +43,6 @@ export type CrmLead = {
 };
 
 const str = (value: unknown): string => (value == null ? '' : String(value)).trim();
-
-/** Escape user-supplied text before interpolating into notification HTML. */
-const escapeHtml = (value: string): string =>
-  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** Flattens a booking row (+ its lead_context) into a CRM-ready lead. */
 export const buildLeadFromBooking = (booking: BookingLike): CrmLead => {
@@ -135,14 +134,38 @@ export const sendBookingNotification = async (booking: BookingLike): Promise<voi
 
     // Email the specialist inbox (skips silently if email/recipient not configured).
     if (env.SPECIALIST_EMAIL) {
+      const travellers =
+        lead.adults + lead.children > 0
+          ? `${lead.adults} adult${lead.adults === 1 ? '' : 's'}` +
+            (lead.children ? `, ${lead.children} child${lead.children === 1 ? '' : 'ren'}` : '') +
+            (lead.travellerType ? ` — ${lead.travellerType}` : '')
+          : '';
+
+      const bodyHtml =
+        detailRows([
+          ['Booking code', lead.bookingCode],
+          ['Name', lead.fullName],
+          ['Email', lead.email],
+          ['Phone', lead.phone],
+          ['Country', lead.country],
+          ['Trip', lead.tripTitle],
+          ['Travel date', lead.travelDate || lead.travelMonth],
+          ['Duration', lead.tripDuration],
+          ['Travellers', travellers],
+          ['Budget', lead.budgetRange],
+          ['Accommodation', lead.accommodationPreference],
+          ['Interests', lead.travelInterests],
+          ['Source', lead.leadSource]
+        ]) + noteBlock('Special requests / message', lead.specialRequests || lead.message);
+
       await sendEmail({
         to: env.SPECIALIST_EMAIL,
         replyTo: lead.email || undefined,
         subject: `New trip request — ${lead.tripTitle || lead.destinationInterest || lead.country || lead.fullName}`,
         html: emailLayout(
-          `New trip request · ${lead.bookingCode || ''}`,
-          `<p><strong>${lead.fullName || 'A traveller'}</strong> &lt;${lead.email || 'no email'}&gt;${lead.phone ? ` · ${lead.phone}` : ''}</p>
-           <pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;color:#384540">${lead.summary}</pre>`
+          `New trip request${lead.bookingCode ? ` · ${lead.bookingCode}` : ''}`,
+          bodyHtml,
+          { label: 'Open in CMS', url: `${ADMIN_URL}/bookings` }
         ),
         text: `New booking ${lead.bookingCode}\n${lead.fullName} <${lead.email}>\n\n${lead.summary}`
       });
@@ -173,16 +196,19 @@ export const sendContactNotification = async (message: BookingLike): Promise<voi
     }
 
     if (env.SPECIALIST_EMAIL) {
+      const bodyHtml =
+        detailRows([
+          ['Name', fullName],
+          ['Email', email],
+          ['Phone', phone],
+          ['Subject', subject]
+        ]) + noteBlock('Message', body);
+
       await sendEmail({
         to: env.SPECIALIST_EMAIL,
         replyTo: email || undefined,
         subject: `New contact message — ${subject || fullName || email || 'Website enquiry'}`,
-        html: emailLayout(
-          'New contact message',
-          `<p><strong>${escapeHtml(fullName) || 'A visitor'}</strong> &lt;${escapeHtml(email) || 'no email'}&gt;${phone ? ` · ${escapeHtml(phone)}` : ''}</p>
-           ${subject ? `<p><strong>Subject:</strong> ${escapeHtml(subject)}</p>` : ''}
-           <pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;color:#384540">${escapeHtml(body)}</pre>`
-        ),
+        html: emailLayout('New contact message', bodyHtml, { label: 'Open in CMS', url: `${ADMIN_URL}/messages` }),
         text: `New contact message\n${fullName} <${email}>${phone ? ` · ${phone}` : ''}\n${subject ? `Subject: ${subject}\n` : ''}\n${body}`
       });
     }
