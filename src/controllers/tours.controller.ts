@@ -13,7 +13,7 @@ const select = '*, destinations(name,slug,country), tour_categories(name,slug)';
 // heavy fields (full_description, sample_itinerary). getTour still uses the full
 // select + embeds below.
 const listSelect =
-  'id, title, slug, short_description, destination_id, category_id, experience_type, persona_tags, duration_days, duration_nights, budget_tier, price_from, currency, main_image_url, banner_image_url, highlights, difficulty_level, group_size, group_size_min, group_size_max, minimum_age, start_location, end_location, is_available, seats_remaining, status, is_featured, is_popular, seo_title, meta_title, meta_description, og_image_url, destinations(name,slug,country), tour_categories(name,slug)';
+  'id, title, slug, short_description, destination_id, category_id, experience_type, persona_tags, duration_days, duration_nights, budget_tier, price_from, currency, main_image_url, banner_image_url, highlights, difficulty_level, group_size, group_size_min, group_size_max, minimum_age, start_location, end_location, is_available, seats_remaining, status, is_featured, is_popular, seo_title, meta_title, meta_description, og_image_url, updated_at, destinations(name,slug,country), tour_categories(name,slug)';
 // Detail view also embeds the day-by-day itinerary, what's included/excluded,
 // the pricing options and the tour gallery images.
 const detailSelect = `${select}, itinerary_days(day_number,title,description,accommodation,meals,activities,image_url), tour_inclusions(title,sort_order), tour_exclusions(title,sort_order), tour_price_options(id,tour_id,title,label,price,currency,price_type,description,sort_order,created_at,updated_at), tour_images(id,tour_id,image_url,alt_text,caption,sort_order,is_featured,created_at,updated_at)`;

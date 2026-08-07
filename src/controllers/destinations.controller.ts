@@ -14,7 +14,7 @@ export const listDestinations = asyncHandler(async (req, res) => {
     // detail-only fields) so a list of destinations isn't ~50KB/row. The full
     // guide is still returned by the get-by-slug detail endpoint.
     select:
-      'id, name, slug, country, region, location, short_description, description, image_url, main_image_url, banner_image_url, latitude, longitude, score_wildlife, score_luxury, score_family, score_photography, score_adventure, score_budget_from, status, is_featured, meta_title, meta_description, og_image_url',
+      'id, name, slug, country, region, location, short_description, description, image_url, main_image_url, banner_image_url, latitude, longitude, score_wildlife, score_luxury, score_family, score_photography, score_adventure, score_budget_from, status, is_featured, meta_title, meta_description, og_image_url, updated_at',
     searchColumns: ['name', 'country', 'region', 'location', 'short_description', 'description'],
     statusColumn: 'status',
     defaultStatus: 'published'
