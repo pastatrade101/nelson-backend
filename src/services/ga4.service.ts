@@ -130,6 +130,18 @@ export const getTraffic = async (range: ResolvedRange): Promise<Ga4Traffic> => {
     cache.set(cacheKey, { at: Date.now(), data });
     return data;
   } catch (error) {
-    return EMPTY(true, error instanceof Error ? error.message : 'GA4 request failed');
+    const raw = error instanceof Error ? error.message : 'GA4 request failed';
+    // eslint-disable-next-line no-console
+    console.error('[ga4] request failed:', raw);
+    // Turn the common misconfigurations into an actionable hint rather than a
+    // raw OpenSSL/gRPC error in the admin dashboard.
+    const friendly = /DECODER|PEM|private key|1E08010C|routines/i.test(raw)
+      ? 'GA4 service-account key looks invalid. Set GOOGLE_PRIVATE_KEY on ONE line with literal \\n and no surrounding quotes.'
+      : /PERMISSION_DENIED|permission|forbidden|403/i.test(raw)
+        ? 'GA4 permission denied. Add the service-account email as a Viewer on the GA4 property (Admin → Property Access Management).'
+        : /NOT_FOUND|property/i.test(raw)
+          ? 'GA4 property not found. Check GA4_PROPERTY_ID is the numeric property ID (not the G- measurement ID).'
+          : raw;
+    return EMPTY(true, friendly);
   }
 };
