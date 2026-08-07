@@ -11,7 +11,7 @@ const listSelect = '*, tours(title,slug)';
 const detailSelect =
   '*, tours(id,title,slug,price_from,currency,main_image_url,duration_days,destinations(name,slug))';
 
-const PUBLIC_SOURCES = ['website_booking_form', 'plan_my_trip'];
+const PUBLIC_SOURCES = ['website_booking_form', 'plan_my_trip', 'begin_your_journey', 'email_itinerary'];
 
 const nullifyEmpties = (input: Record<string, unknown>) => {
   const out: Record<string, unknown> = {};

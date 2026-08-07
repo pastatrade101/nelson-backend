@@ -16,6 +16,8 @@ export const PAYMENT_STATUSES = ['unpaid', 'partially_paid', 'paid', 'refunded',
 export const BOOKING_SOURCES = [
   'website_booking_form',
   'plan_my_trip',
+  'begin_your_journey',
+  'email_itinerary',
   'ai_handoff',
   'whatsapp',
   'admin_created',
