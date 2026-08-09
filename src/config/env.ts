@@ -43,6 +43,18 @@ const envSchema = z.object({
   // Where new-booking notifications go (defaults to none → skipped).
   SPECIALIST_EMAIL: z.string().optional().or(z.literal('')),
 
+  // ── Currency / exchange rates (Open Exchange Rates) ───────────────────────
+  // Prices are stored in USD; rates convert them for display. Without an app id
+  // the site stays USD-only (nothing breaks).
+  OPEN_EXCHANGE_RATES_APP_ID: z.string().optional().or(z.literal('')),
+  EXCHANGE_RATE_REFRESH_ENABLED: boolish(true),
+  EXCHANGE_RATE_REFRESH_CRON: z.string().default('0 6,18 * * *'),
+  EXCHANGE_RATE_TIMEZONE: z.string().default('Africa/Dar_es_Salaam'),
+  EXCHANGE_RATE_CACHE_HOURS: z.coerce.number().positive().default(12),
+  EXCHANGE_RATE_MARKUP_PERCENT: z.coerce.number().min(0).max(25).default(0),
+  EXCHANGE_RATE_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
+  EXCHANGE_RATE_LOCK_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+
   // ── GA4 Data API (Phase 2 analytics traffic) — backend only ───────────────
   // Service-account credentials. GOOGLE_PRIVATE_KEY keeps literal "\n" newlines
   // (we un-escape them at use). Leave blank to run without GA4 (dashboard shows

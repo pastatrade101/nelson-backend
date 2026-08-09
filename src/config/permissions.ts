@@ -86,6 +86,8 @@ export const permissions = [
   'messages.archive',
   'settings.view',
   'settings.update',
+  'exchange_rates.view',
+  'exchange_rates.refresh',
   'admin_users.view',
   'admin_users.create',
   'admin_users.update',
