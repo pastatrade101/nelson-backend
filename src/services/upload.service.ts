@@ -3,11 +3,18 @@ import sharp from 'sharp';
 import { encode as encodeBlurhash } from 'blurhash';
 import { env } from '../config/env';
 import { supabase } from '../config/supabase';
+import { r2Enabled, r2PublicUrl, r2PutObject, r2Remove } from './r2.service';
 import { AppError } from '../utils/api-response';
 
 // Width of the web-optimized thumbnail we store alongside each uploaded image.
 // Big enough for crisp card/grid use on retina, tiny in bytes as webp.
 const THUMBNAIL_WIDTH = 600;
+
+// If a stored ORIGINAL is wider than this, we down-cap + re-encode it to webp so
+// heavy phone-camera originals (multi-MB, 4000-6000px) stop burning Storage
+// egress. 2560px is ample for a full-bleed hero on a 4K display; the responsive
+// ladder below tops out at 1920 (< this), so variants are unaffected.
+const MAX_ORIGINAL_WIDTH = 2560;
 
 // Responsive ladder generated for every image (AVIF + WebP), skipping any width
 // larger than the source. Derivatives live at a deterministic path derived from
@@ -91,6 +98,8 @@ const extensionFromMime = (mimeType: string) => {
 };
 
 export const ensureStorageBucket = async () => {
+  // R2 buckets are provisioned in the Cloudflare dashboard, not via this API.
+  if (r2Enabled) return;
   if (!bucketReadyPromise) {
     bucketReadyPromise = (async () => {
       const { error: getError } = await supabase.storage.getBucket(env.SUPABASE_STORAGE_BUCKET);
@@ -117,11 +126,18 @@ export const ensureStorageBucket = async () => {
   }
 };
 
-// Upload a raw buffer to storage and return its public URL.
+// Upload a raw buffer to storage and return its public URL. Originals and
+// thumbnails live at immutable random-uuid keys (upsert:false), so a long cache
+// is safe — a week keeps repeat visitors and the CDN from re-pulling the bytes.
 const putObject = async (path: string, buffer: Buffer, contentType: string) => {
+  if (r2Enabled) {
+    await r2PutObject(path, buffer, contentType, '604800');
+    return r2PublicUrl(path);
+  }
+
   const { error } = await supabase.storage.from(env.SUPABASE_STORAGE_BUCKET).upload(path, buffer, {
     contentType,
-    cacheControl: '3600',
+    cacheControl: '604800',
     upsert: false
   });
 
@@ -134,6 +150,10 @@ const putObject = async (path: string, buffer: Buffer, contentType: string) => {
 // Variant objects are content-addressed (uuid + width + format) and never change,
 // so they get an immutable 1-year cache and upsert (safe to re-run backfills).
 const putVariant = async (path: string, buffer: Buffer, contentType: string) => {
+  if (r2Enabled) {
+    await r2PutObject(path, buffer, contentType, '31536000');
+    return;
+  }
   const { error } = await supabase.storage.from(env.SUPABASE_STORAGE_BUCKET).upload(path, buffer, {
     contentType,
     cacheControl: '31536000',
@@ -142,33 +162,75 @@ const putVariant = async (path: string, buffer: Buffer, contentType: string) => 
   if (error) throw new AppError(`Unable to upload variant: ${error.message}`, 500, [error]);
 };
 
-const uploadToStorage = async (file: Express.Multer.File, folder: string, allowedMimeTypes: string[], errorMessage: string) => {
-  const extension = extensionFromMime(file.mimetype);
-  if (!extension || !allowedMimeTypes.includes(file.mimetype)) throw new AppError(errorMessage, 400);
+const uploadToStorage = async (
+  file: Express.Multer.File,
+  folder: string,
+  allowedMimeTypes: string[],
+  errorMessage: string,
+  override?: { buffer: Buffer; mimetype: string }
+) => {
+  // Acceptance is always governed by the CLIENT-declared type, even when we
+  // re-encode the stored bytes (so an oversized image can't smuggle in a
+  // disallowed type just because it happens to transcode to webp).
+  if (!extensionFromMime(file.mimetype) || !allowedMimeTypes.includes(file.mimetype)) {
+    throw new AppError(errorMessage, 400);
+  }
+
+  const buffer = override?.buffer ?? file.buffer;
+  const storedMime = override?.mimetype ?? file.mimetype;
+  const extension = extensionFromMime(storedMime);
+  if (!extension) throw new AppError(errorMessage, 400);
 
   await ensureStorageBucket();
 
   const path = `${folder}/${randomUUID()}.${extension}`;
-  const url = await putObject(path, file.buffer, file.mimetype);
+  const url = await putObject(path, buffer, storedMime);
 
   return {
     path,
     url,
-    mimeType: file.mimetype,
-    size: file.size
+    mimeType: storedMime,
+    size: buffer.length
   };
 };
 
+// Down-cap the ORIGINAL we persist: if the EXIF-rotated source is wider than
+// MAX_ORIGINAL_WIDTH, resize to that width and re-encode to webp (baking in EXIF
+// orientation). Already-small images and anything sharp can't decode are returned
+// byte-for-byte, so nothing is ever lost. This is the single biggest Storage-egress
+// win — an 8MB 6000px phone photo becomes a ~300KB 2560px webp.
+const normalizeOriginal = async (file: Express.Multer.File): Promise<{ buffer: Buffer; mimetype: string }> => {
+  try {
+    const meta = await sharp(file.buffer, { failOn: 'none' }).metadata();
+    // Orientations 5-8 rotate 90/270°, so the post-rotate width is the height.
+    const effectiveWidth = meta.orientation && meta.orientation >= 5 ? meta.height ?? 0 : meta.width ?? 0;
+    if (!effectiveWidth || effectiveWidth <= MAX_ORIGINAL_WIDTH) {
+      return { buffer: file.buffer, mimetype: file.mimetype };
+    }
+    const buffer = await sharp(file.buffer, { failOn: 'none' })
+      .rotate()
+      .resize({ width: MAX_ORIGINAL_WIDTH, withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+    return { buffer, mimetype: 'image/webp' };
+  } catch {
+    return { buffer: file.buffer, mimetype: file.mimetype };
+  }
+};
+
 export const uploadImageToStorage = async (file: Express.Multer.File, folder = 'uploads') => {
-  const result = await uploadToStorage(file, folder, ['image/jpeg', 'image/png', 'image/webp'], 'Only jpg, jpeg, png, and webp images are allowed.');
+  // Cap the stored original first, then derive the thumbnail + metadata from the
+  // SAME bytes so width/height/mime in the DB always match what we actually store.
+  const normalized = await normalizeOriginal(file);
+  const result = await uploadToStorage(file, folder, ['image/jpeg', 'image/png', 'image/webp'], 'Only jpg, jpeg, png, and webp images are allowed.', normalized);
 
   // Generate a small webp thumbnail. This is a pure optimization — if it fails
   // for any reason, the upload still succeeds and we fall back to the original.
   let thumbnailPath: string | undefined;
   let thumbnailUrl: string | undefined;
   try {
-    const thumbnailBuffer = await sharp(file.buffer)
-      .rotate() // honour EXIF orientation
+    const thumbnailBuffer = await sharp(normalized.buffer)
+      .rotate() // honour EXIF orientation (a no-op on an already-normalized webp)
       .resize({ width: THUMBNAIL_WIDTH, withoutEnlargement: true })
       .webp({ quality: 72 })
       .toBuffer();
@@ -179,7 +241,7 @@ export const uploadImageToStorage = async (file: Express.Multer.File, folder = '
     thumbnailUrl = undefined;
   }
 
-  const meta = await extractImageMeta(file.buffer).catch(() => ({} as ImageMeta));
+  const meta = await extractImageMeta(normalized.buffer).catch(() => ({} as ImageMeta));
 
   return { ...result, thumbnailPath, thumbnailUrl, ...meta };
 };
@@ -269,6 +331,12 @@ export const uploadLottieToStorage = async (file: Express.Multer.File, folder = 
 };
 
 export const deleteImageFromStorage = async (path: string) => {
+  if (r2Enabled) {
+    await r2Remove(path);
+    // Best-effort cleanup of any Supabase copy (migrated objects live in both).
+    await supabase.storage.from(env.SUPABASE_STORAGE_BUCKET).remove([path]);
+    return;
+  }
   const { error } = await supabase.storage.from(env.SUPABASE_STORAGE_BUCKET).remove([path]);
   if (error) throw new AppError('Unable to delete image.', 500, [error]);
 };

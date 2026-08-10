@@ -25,7 +25,9 @@ const THUMBNAIL_COLUMNS: Record<string, string[]> = {
   tours: ['main_image_url'],
   destinations: ['main_image_url', 'image_url', 'banner_image_url'],
   lodges: ['image_url', 'hero_image_url'],
-  blog_posts: ['featured_image_url']
+  blog_posts: ['featured_image_url'],
+  testimonials: ['client_image_url'],
+  specialists: ['photo_url', 'photo']
 };
 
 // Attach `<column>_thumbnail` to rows in place when a media_library thumbnail

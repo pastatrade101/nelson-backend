@@ -24,6 +24,20 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().url().optional().or(z.literal('')),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional().or(z.literal('')),
   SUPABASE_STORAGE_BUCKET: z.string().default('emnel-media'),
+
+  // ── Cloudflare R2 object storage (S3-compatible) ──────────────────────────
+  // Optional media backend. When all four required vars are set, NEW uploads go
+  // to R2 (zero egress fees) and return R2_PUBLIC_BASE_URL-based public URLs;
+  // otherwise everything stays on Supabase Storage. Existing objects are copied
+  // over by `npm run migrate:r2` and served via a read-time URL rewrite on the
+  // frontend, so this can be toggled off at any time to fall back to Supabase.
+  R2_ACCOUNT_ID: z.string().optional().or(z.literal('')),
+  R2_ACCESS_KEY_ID: z.string().optional().or(z.literal('')),
+  R2_SECRET_ACCESS_KEY: z.string().optional().or(z.literal('')),
+  R2_BUCKET: z.string().default('emnel-media'),
+  // Public base that serves the bucket (the Cloudflare CDN custom domain, no
+  // trailing slash), e.g. https://cdn.emneladventures.com.
+  R2_PUBLIC_BASE_URL: z.string().optional().or(z.literal('')),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters long').default('development-only-change-this-secret'),
   JWT_EXPIRES_IN: z.string().default('7d'),
   ANTHROPIC_API_KEY: z.string().optional().or(z.literal('')),
@@ -123,6 +137,13 @@ if (parsed.data.NODE_ENV === 'production') {
 }
 
 export const env = parsed.data;
+
+// R2 is the media backend only when fully configured (credentials + a public
+// base to build URLs from). Otherwise we transparently stay on Supabase Storage.
+export const r2Enabled = Boolean(
+  env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY && env.R2_PUBLIC_BASE_URL
+);
+
 // Comma-separated list of allowed front-end origins for CORS. Trailing slashes are
 // stripped so e.g. "https://emneladventures.com/" matches the browser's origin.
 export const allowedOrigins = env.FRONTEND_URL.split(',')
