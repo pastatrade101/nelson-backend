@@ -33,17 +33,22 @@ const SECTIONS: SectionSeed[] = [
     }
   },
   {
+    // The original About hero, kept as-is — design and copy — now editable.
     section_key: 'about_hero',
     sort_order: 1,
-    title: 'A Tanzanian family’s safari company, built in Arusha.',
+    title: 'We are not a travel agency. We are Tanzania.',
     subtitle:
-      'Maasai cattle herder turned celebrated chef whose forty-year career paid for his children’s education. Today, Nelson and the founding team run private safaris across Tanzania the way the country deserves to be experienced.',
-    button_text: 'Plan Your Safari',
-    button_url: '/plan-my-trip',
-    image_url: '',
+      'Every person on this team was born here, raised here, and has spent their life learning this land. We did not come to Tanzania to offer safaris — we grew up inside the thing we are now sharing with you.',
+    content: 'TripAdvisor · TLTO Certified · TTB Licensed · Tanzania-born team · Reply within 24 hours',
+    button_text: 'Begin Your Journey',
+    button_url: '/contact',
+    image_url: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=1900&q=72',
     extra_data: {
-      eyebrow: 'PRIVATE TANZANIA SAFARIS · ARUSHA · EST. 2016',
-      image_alt: 'Emnel Adventures — private safaris across Tanzania, operated from Arusha'
+      eyebrow: 'About Emnel Adventures',
+      image_alt: 'Emnel Adventures — a Tanzanian safari team on the Serengeti plains at golden hour',
+      secondary_cta: 'Meet the Guides',
+      secondary_href: '#team',
+      trust_stars: '★★★★★'
     }
   },
   {
