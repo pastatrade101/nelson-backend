@@ -19,6 +19,8 @@
     "backfill:downcap:prod": "node dist/scripts/backfill-downcap.js",
     "migrate:r2": "tsx src/scripts/migrate-to-r2.ts",
     "migrate:r2:prod": "node dist/scripts/migrate-to-r2.js",
+    "seed:about": "tsx src/scripts/seed-about.ts",
+    "seed:about:prod": "node dist/scripts/seed-about.js",
     "email:test": "tsx src/scripts/email-test.ts",
     "email:test:prod": "node dist/scripts/email-test.js"
   },
