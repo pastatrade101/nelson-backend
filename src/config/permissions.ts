@@ -81,6 +81,11 @@ export const permissions = [
   'faqs.delete',
   'homepage.view',
   'homepage.update',
+  'market_pages.view',
+  'market_pages.create',
+  'market_pages.update',
+  'market_pages.delete',
+  'market_pages.publish',
   'messages.view',
   'messages.update',
   'messages.archive',
@@ -163,6 +168,10 @@ const contentPermissions: PermissionKey[] = [
   'faqs.update',
   'homepage.view',
   'homepage.update',
+  'market_pages.view',
+  'market_pages.create',
+  'market_pages.update',
+  'market_pages.publish',
   'ai_conversations.view',
   'tour_matches.view'
 ];
@@ -198,6 +207,7 @@ export const defaultRolePermissions: Record<AdminRole, PermissionKey[]> = {
     'specialists.view',
     'faqs.view',
     'homepage.view',
+    'market_pages.view',
     'ai_conversations.view',
     'tour_matches.view'
   ],
@@ -215,6 +225,7 @@ export const defaultRolePermissions: Record<AdminRole, PermissionKey[]> = {
     'specialists.view',
     'faqs.view',
     'homepage.view',
+    'market_pages.view',
     'messages.view',
     'settings.view',
     'ai_conversations.view',
