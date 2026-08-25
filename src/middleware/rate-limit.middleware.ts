@@ -1,8 +1,14 @@
 import rateLimit from 'express-rate-limit';
 
+// Shared by every public lead form (bookings, plan-my-trip, begin-your-journey,
+// email-itinerary, contact), so the budget is per IP across ALL of them — not
+// per form. 5/hour was low enough to block real enquirers behind one shared IP
+// (a family on hotel wifi, an office, or CGNAT mobile), especially since a
+// visitor may legitimately send a booking request and then a contact message.
+// Turnstile is the primary abuse control; this is a blunt backstop.
 export const publicFormLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 5,
+  limit: 15,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
