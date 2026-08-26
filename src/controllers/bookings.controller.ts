@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase';
 import { safeAudit } from '../services/audit.service';
 import { generateBookingCode } from '../services/booking-code.service';
 import { sendBookingNotification, syncBookingToHubSpot } from '../services/notification.service';
+import { currencyService } from '../services/currency.service';
 import { asyncHandler } from '../utils/async-handler';
 import { AppError, sendSuccess } from '../utils/api-response';
 import { cleanSearch, getPagination, getQueryString, paginationMeta } from '../utils/query';
@@ -39,11 +40,32 @@ export const createBooking = asyncHandler(async (req, res) => {
   // Public submitters may only set public sources — never forge admin/CRM sources.
   if (!isAdmin && !PUBLIC_SOURCES.includes(source)) source = 'website_booking_form';
 
+  // ── Idempotency ─────────────────────────────────────────────────────────────
+  // Preferred path: the form sends a stable idempotency_key, and the unique
+  // index on that column is what actually enforces uniqueness — including
+  // against two requests racing in parallel, which no read-then-write check can
+  // catch. The insert below turns the resulting 23505 into the existing row.
+  const idempotencyKey = String(payload.idempotency_key ?? '').trim();
+  if (!idempotencyKey) delete payload.idempotency_key;
+  if (!isAdmin && idempotencyKey) {
+    const { data: existing } = await supabase
+      .from('booking_requests')
+      .select(detailSelect)
+      .eq('idempotency_key', idempotencyKey)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (existing) return sendSuccess(res, 'Booking request already received.', existing, 201);
+  }
+
   // ── Anti-spam: duplicate guard ──────────────────────────────────────────────
-  // Protect against double-taps / refresh re-posts: if the same email already
-  // submitted for the same trip (or a general request) in the last 2 minutes,
-  // return that existing request instead of creating a duplicate row.
-  if (!isAdmin) {
+  // Fallback for forms that send no key. Protects against double-taps / refresh
+  // re-posts: the same email, for the same trip, from the same form, inside two
+  // minutes returns the existing request instead of creating a duplicate row.
+  // Scoping by SOURCE matters: the contextual forms all leave tour_id null, so
+  // without it a plan-my-trip request and a tour-page email capture from the
+  // same person collapse into each other and the visitor is handed back somebody
+  // else's request.
+  if (!isAdmin && !idempotencyKey) {
     const email = String(payload.email ?? '').trim();
     if (email) {
       const sinceIso = new Date(Date.now() - 2 * 60 * 1000).toISOString();
@@ -51,6 +73,7 @@ export const createBooking = asyncHandler(async (req, res) => {
         .from('booking_requests')
         .select(detailSelect)
         .ilike('email', email)
+        .eq('source', source)
         .gte('created_at', sinceIso)
         .is('deleted_at', null);
       dupQuery = payload.tour_id
@@ -68,6 +91,17 @@ export const createBooking = asyncHandler(async (req, res) => {
     }
   }
 
+  // The currency the visitor was actually looking at when they enquired, so the
+  // specialist quotes in the same one. Validated against the configured list —
+  // an unsupported code falls back to USD rather than being trusted.
+  const selectedCurrencyInput = String(payload.selected_currency ?? payload.currency ?? 'USD').trim().toUpperCase();
+  const selectedCurrency = (await currencyService.isConfiguredSupported(selectedCurrencyInput))
+    ? selectedCurrencyInput
+    : 'USD';
+  delete payload.selected_currency;
+  const leadContext = (payload.lead_context as Record<string, unknown> | null) ?? {};
+  if (!isAdmin) leadContext.selected_currency = selectedCurrency;
+
   const bookingCode = await generateBookingCode();
 
   const insertData = {
@@ -76,7 +110,7 @@ export const createBooking = asyncHandler(async (req, res) => {
     status: 'pending',
     payment_status: 'unpaid',
     source,
-    lead_context: (payload.lead_context as Record<string, unknown> | null) ?? {}
+    lead_context: leadContext
   };
 
   const { data, error } = await supabase
@@ -85,7 +119,20 @@ export const createBooking = asyncHandler(async (req, res) => {
     .select(detailSelect)
     .single();
 
-  if (error) throw new AppError('Unable to submit booking request.', 500, [error]);
+  if (error) {
+    // 23505 = unique violation on idempotency_key: two submissions raced, and
+    // this one lost. The winner is the real record, so hand that back rather
+    // than showing the visitor an error for a request that did go through.
+    if (error.code === '23505' && idempotencyKey) {
+      const { data: winner } = await supabase
+        .from('booking_requests')
+        .select(detailSelect)
+        .eq('idempotency_key', idempotencyKey)
+        .maybeSingle();
+      if (winner) return sendSuccess(res, 'Booking request already received.', winner, 201);
+    }
+    throw new AppError('Unable to submit booking request.', 500, [error]);
+  }
 
   // Fire-and-forget side effects — must never block or fail booking creation.
   void sendBookingNotification(data as Record<string, unknown>);

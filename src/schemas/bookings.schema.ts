@@ -52,6 +52,12 @@ export const bookingCreateSchema = z.object({
   source: sourceEnum.default('website_booking_form'),
   ai_conversation_id: uuidOrEmpty,
   lead_context: leadContextSchema,
+  // A stable per-submission key from the form. A unique index on the column is
+  // what actually makes retries and racing double-submits safe.
+  idempotency_key: z.string().min(8).max(120).optional().nullable(),
+  // The currency the visitor was viewing; validated server-side, then recorded
+  // in lead_context so the specialist quotes in the same one.
+  selected_currency: z.string().min(3).max(3).optional().nullable(),
   // Honeypot — must stay empty for humans. Kept in the schema (zod strips unknown
   // keys) so the controller can inspect it, then it is dropped before insert.
   hp_company: z.string().max(120).optional().nullable()
