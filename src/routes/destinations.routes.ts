@@ -3,6 +3,7 @@ import {
   createDestination,
   deleteDestination,
   getDestination,
+  listDestinationCountries,
   listDestinations,
   updateDestination
 } from '../controllers/destinations.controller';
@@ -14,6 +15,8 @@ import { destinationCreateSchema, destinationUpdateSchema } from '../schemas/des
 const router = Router();
 
 router.get('/', listDestinations);
+// Must precede '/:slug', or 'countries' is read as a destination slug.
+router.get('/countries', listDestinationCountries);
 router.get('/:slug', getDestination);
 router.post('/', authenticate, requirePermission('destinations.create'), validate({ body: destinationCreateSchema }), createDestination);
 router.put('/:id', authenticate, requirePermission('destinations.update'), validate({ body: destinationUpdateSchema }), updateDestination);

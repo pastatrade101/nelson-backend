@@ -10,6 +10,9 @@ export const tourCreateSchema = z.object({
   short_description: z.string().min(5).optional().nullable(),
   full_description: z.string().min(5).optional().nullable(),
   destination_id: optionalUuid,
+  // Every country the trip visits. Defaults to the live destination; an East
+  // Africa journey carries several.
+  countries: z.array(z.string().min(2).max(60)).optional(),
   category_id: optionalUuid,
   experience_type: z.string().max(120).optional().nullable(),
   persona_tags: z.array(z.string().max(80)).default([]),

@@ -86,6 +86,11 @@ export const permissions = [
   'market_pages.update',
   'market_pages.delete',
   'market_pages.publish',
+  'safari_essentials.view',
+  'safari_essentials.create',
+  'safari_essentials.update',
+  'safari_essentials.delete',
+  'safari_essentials.publish',
   'messages.view',
   'messages.update',
   'messages.archive',
@@ -172,6 +177,10 @@ const contentPermissions: PermissionKey[] = [
   'market_pages.create',
   'market_pages.update',
   'market_pages.publish',
+  'safari_essentials.view',
+  'safari_essentials.create',
+  'safari_essentials.update',
+  'safari_essentials.publish',
   'ai_conversations.view',
   'tour_matches.view'
 ];
@@ -208,6 +217,7 @@ export const defaultRolePermissions: Record<AdminRole, PermissionKey[]> = {
     'faqs.view',
     'homepage.view',
     'market_pages.view',
+    'safari_essentials.view',
     'ai_conversations.view',
     'tour_matches.view'
   ],
@@ -226,6 +236,7 @@ export const defaultRolePermissions: Record<AdminRole, PermissionKey[]> = {
     'faqs.view',
     'homepage.view',
     'market_pages.view',
+    'safari_essentials.view',
     'messages.view',
     'settings.view',
     'ai_conversations.view',

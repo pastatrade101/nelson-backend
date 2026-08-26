@@ -15,6 +15,12 @@ type ListOptions = {
   orderBy?: string;
   ascending?: boolean;
   filters?: string[];
+  /**
+   * Columns holding a text[] where the query value is one element, matched with
+   * containment rather than equality (e.g. `?country=Kenya` against a tour whose
+   * countries are ['Kenya','Tanzania']). Equality would miss every multi-value row.
+   */
+  arrayFilters?: { param: string; column: string }[];
 };
 
 // Image columns (per table) whose URLs may have a web-optimized thumbnail in
@@ -92,6 +98,12 @@ export const listRecords = async (req: Request, res: Response, options: ListOpti
     // "null" filters to rows where the column IS NULL (e.g. general, unattached
     // FAQs); any other value is an exact match.
     query = value === 'null' ? query.is(filter, null) : query.eq(filter, value);
+  }
+
+  for (const { param, column } of options.arrayFilters ?? []) {
+    const value = getQueryString(req.query, param);
+    if (!value || value === 'all') continue;
+    query = query.contains(column, [value]);
   }
 
   const { data, error, count } = await query.range(from, to);
