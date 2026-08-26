@@ -19,7 +19,6 @@ export const marketPageCreateSchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(2).optional(),
   market_code: z.string().optional().nullable(),
-  currency: z.string().trim().min(3).max(3).default('USD'),
   hero_eyebrow: z.string().optional().nullable(),
   hero_title: z.string().optional().nullable(),
   hero_subtitle: z.string().optional().nullable(),
