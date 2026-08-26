@@ -29,7 +29,12 @@ export const listTours = asyncHandler(async (req, res) => {
     filters: ['destination_id', 'category_id', 'is_featured', 'is_popular', 'is_available'],
     // ?country=Kenya matches a trip whose countries include Kenya, so a
     // multi-country journey shows up under each country it visits.
-    arrayFilters: [{ param: 'country', column: 'countries' }]
+    arrayFilters: [
+      { param: 'country', column: 'countries' },
+      // ?persona=couple matches a trip tagged for couples. Multi-value, because a
+      // trip can genuinely suit couples and families both.
+      { param: 'persona', column: 'persona_tags' }
+    ]
   });
 });
 
