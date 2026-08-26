@@ -126,3 +126,12 @@ export const emailLayout = (heading: string, bodyHtml: string, cta?: { label: st
       </div>
     </div>
   </div>`;
+
+/** Anything interpolated into an email body goes through here first. */
+export const escapeHtml = (value: unknown): string =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');

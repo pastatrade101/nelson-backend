@@ -46,3 +46,12 @@ export const exchangeRateRefreshLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, message: 'Too many manual refresh attempts. Please wait and try again.', errors: [] }
 });
+
+/** Public quotation accept/decline: generous for people, tight for scripts. */
+export const quotationActionLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 12,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many attempts. Please wait a few minutes and try again.', errors: [] }
+});

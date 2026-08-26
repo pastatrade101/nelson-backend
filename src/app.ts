@@ -15,6 +15,8 @@ import availableDatesRoutes from './routes/available-dates.routes';
 import blogRoutes from './routes/blog.routes';
 import blogCategoriesRoutes from './routes/blog-categories.routes';
 import bookingsRoutes from './routes/bookings.routes';
+import whatsappRoutes from './routes/whatsapp.routes';
+import quotationsRoutes from './routes/quotations.routes';
 import tripPortalRoutes from './routes/trip-portal.routes';
 import categoriesRoutes from './routes/categories.routes';
 import contactRoutes from './routes/contact.routes';
@@ -82,7 +84,19 @@ app.use(
   })
 );
 app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
-app.use(express.json({ limit: '1mb' }));
+// Meta signs its webhook over the EXACT bytes it sent, so the raw buffer is kept for
+// that path only — parsing and re-serialising JSON changes key order and whitespace
+// and would invalidate every signature.
+app.use(
+  express.json({
+    limit: '1mb',
+    verify: (req, _res, buf) => {
+      if (typeof req.url === 'string' && req.url.includes('/whatsapp/webhook')) {
+        (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
+      }
+    }
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 
 app.get('/api/health', (_req, res) => {
@@ -112,6 +126,8 @@ app.use('/api/safety-topics', safetyTopicsRoutes);
 app.use('/api/travel-styles', travelStylesRoutes);
 app.use('/api/comparisons', comparisonsRoutes);
 app.use('/api/bookings', bookingsRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/quotations', quotationsRoutes);
 app.use('/api/trip', tripPortalRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/blog', blogRoutes);

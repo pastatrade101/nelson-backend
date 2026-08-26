@@ -1,3 +1,4 @@
+import { supabase } from '../config/supabase';
 import { env } from '../config/env';
 import { detailRows, emailLayout, noteBlock, sendEmail } from './email.service';
 import { syncToHubSpot } from './hubspot.service';
@@ -244,4 +245,31 @@ export const syncBookingToHubSpot = async (booking: BookingLike): Promise<void> 
     // eslint-disable-next-line no-console
     console.error('[hubspot] Booking sync skipped due to error', error);
   }
+};
+
+/**
+ * Which inbox an enquiry belongs to: a per-source setting, then the default
+ * setting, then the environment. Ported from the Goldfinch backend.
+ */
+export const recipientFor = async (source: string): Promise<string> => {
+  const keys = [`enquiry_email_${source}`, 'enquiry_email_default'];
+
+  try {
+    const { data } = await supabase
+      .from('website_settings')
+      .select('setting_key,setting_value')
+      .in('setting_key', keys);
+
+    const map = new Map(
+      (data ?? []).map((row: { setting_key: string; setting_value: unknown }) => [row.setting_key, row.setting_value])
+    );
+    for (const key of keys) {
+      const value = String(map.get(key) ?? '').replace(/^"|"$/g, '').trim();
+      if (value.includes('@')) return value;
+    }
+  } catch {
+    // Settings unavailable — fall through to the env default.
+  }
+
+  return env.SPECIALIST_EMAIL || '';
 };
