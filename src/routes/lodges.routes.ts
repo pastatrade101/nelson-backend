@@ -3,6 +3,7 @@ import {
   createLodge,
   deleteLodge,
   getLodge,
+  listLodgeItineraries,
   listLodges,
   updateLodge
 } from '../controllers/lodges.controller';
@@ -14,6 +15,8 @@ import { lodgeCreateSchema, lodgeUpdateSchema } from '../schemas/lodges.schema';
 const router = Router();
 
 router.get('/', listLodges);
+// Two segments, so it cannot be mistaken for a slug.
+router.get('/:id/itineraries', listLodgeItineraries);
 router.get('/:slug', getLodge);
 router.post('/', authenticate, requirePermission('lodges.create'), validate({ body: lodgeCreateSchema }), createLodge);
 router.put('/:id', authenticate, requirePermission('lodges.update'), validate({ body: lodgeUpdateSchema }), updateLodge);
