@@ -12,7 +12,21 @@ import {
 const select = '*, destinations(name,slug)';
 // The detail view adds the property's gallery. Falls back below when the table
 // is absent, so a pending migration hides the gallery rather than 404ing the page.
-const detailSelect = `${select}, lodge_images(id,image_url,alt_text,caption,sort_order,is_cover)`;
+//
+// `GET /:slug` is PUBLIC and unauthenticated, and SvelteKit serialises whatever
+// it returns into the SSR hydration payload — so every column named here ends up
+// in the page's HTML source whether or not a component renders it. Two rate
+// columns are therefore deliberately absent:
+//   net_rate — the contracted trade rate. Commercially confidential; exposing it
+//              shows competitors and the property's other agents our buying price.
+//   notes    — free text on a rate row, which is exactly where terms like
+//              "10% commission, contracted via X" get typed.
+// Both remain available to the admin through the authenticated details endpoint.
+const detailSelect = `${select}, lodge_images(id,image_url,alt_text,caption,sort_order,is_cover)` +
+  ', lodge_highlights(id,title,sort_order)' +
+  ', lodge_inclusions(id,title,is_included,sort_order)' +
+  ', lodge_rooms(id,name,room_type,short_description,max_adults,max_children,max_guests,bed_types,unit_count,views,amenities,sort_order,lodge_room_images(id,image_url,alt_text,caption,sort_order,is_cover))' +
+  ', lodge_seasonal_rates(id,season_type,season_name,valid_from,valid_until,currency,rack_rate,single_rate,double_rate,triple_rate,child_rate,single_supplement,pricing_basis,meal_plan,sort_order)';
 
 /**
  * The itineraries that actually stay at this property.
@@ -89,7 +103,13 @@ export const getLodge = asyncHandler(async (req, res) => {
   if (error) throw new AppError('Unable to fetch lodges.', 500, [error]);
   if (!data) throw new AppError('Record not found.', 404);
 
-  return sendSuccess(res, 'Record fetched successfully.', data);
+  // Rates are off unless the property opts in — the intent the migration states
+  // and nothing implemented until now. Stripped here rather than hidden in the
+  // component, because anything this endpoint returns reaches the page source.
+  const lodge = data as unknown as Record<string, unknown>;
+  if (lodge.show_rates_publicly !== true) lodge.lodge_seasonal_rates = [];
+
+  return sendSuccess(res, 'Record fetched successfully.', lodge);
 });
 
 export const createLodge = asyncHandler(async (req, res) => {
