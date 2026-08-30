@@ -10,6 +10,9 @@ import {
 } from '../utils/supabase-helpers';
 
 const select = '*, destinations(name,slug)';
+// The detail view adds the property's gallery. Falls back below when the table
+// is absent, so a pending migration hides the gallery rather than 404ing the page.
+const detailSelect = `${select}, lodge_images(id,image_url,alt_text,caption,sort_order,is_cover)`;
 
 /**
  * The itineraries that actually stay at this property.
@@ -70,7 +73,23 @@ export const listLodges = asyncHandler(async (req, res) => {
 });
 
 export const getLodge = asyncHandler(async (req, res) => {
-  return getRecordBySlug(res, 'lodges', req.params.slug, select);
+  // Try with the gallery; fall back without it when lodge_images does not exist
+  // yet. PostgREST rejects the whole query on an unresolvable embed, so without
+  // this a pending migration would 500 every property page.
+  const { data, error } = await supabase
+    .from('lodges')
+    .select(detailSelect)
+    .eq('slug', req.params.slug)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error && ((error as { code?: string }).code === 'PGRST200' || (error as { code?: string }).code === '42P01')) {
+    return getRecordBySlug(res, 'lodges', req.params.slug, select);
+  }
+  if (error) throw new AppError('Unable to fetch lodges.', 500, [error]);
+  if (!data) throw new AppError('Record not found.', 404);
+
+  return sendSuccess(res, 'Record fetched successfully.', data);
 });
 
 export const createLodge = asyncHandler(async (req, res) => {
