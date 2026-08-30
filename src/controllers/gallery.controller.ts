@@ -7,7 +7,7 @@ export const listGalleryImages = asyncHandler(async (req, res) => {
   return listRecords(req, res, {
     table: 'gallery_images',
     select,
-    searchColumns: ['title', 'alt_text', 'caption'],
+    searchColumns: ['title', 'alt_text', 'caption', 'travel_month', 'guest_quote'],
     statusColumn: 'status',
     defaultStatus: 'published',
     filters: ['destination_id', 'tour_id', 'media_type'],

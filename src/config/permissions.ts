@@ -91,6 +91,10 @@ export const permissions = [
   'safari_essentials.update',
   'safari_essentials.delete',
   'safari_essentials.publish',
+  'lodge_images.view',
+  'lodge_images.create',
+  'lodge_images.update',
+  'lodge_images.delete',
   'messages.view',
   'messages.update',
   'messages.archive',
@@ -181,6 +185,9 @@ const contentPermissions: PermissionKey[] = [
   'safari_essentials.create',
   'safari_essentials.update',
   'safari_essentials.publish',
+  'lodge_images.view',
+  'lodge_images.create',
+  'lodge_images.update',
   'ai_conversations.view',
   'tour_matches.view'
 ];
@@ -218,6 +225,7 @@ export const defaultRolePermissions: Record<AdminRole, PermissionKey[]> = {
     'homepage.view',
     'market_pages.view',
     'safari_essentials.view',
+    'lodge_images.view',
     'ai_conversations.view',
     'tour_matches.view'
   ],
@@ -237,6 +245,7 @@ export const defaultRolePermissions: Record<AdminRole, PermissionKey[]> = {
     'homepage.view',
     'market_pages.view',
     'safari_essentials.view',
+    'lodge_images.view',
     'messages.view',
     'settings.view',
     'ai_conversations.view',

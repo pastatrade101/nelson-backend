@@ -16,7 +16,23 @@ const listSelect =
   'id, title, slug, short_description, destination_id, countries, category_id, experience_type, persona_tags, duration_days, duration_nights, budget_tier, price_from, currency, main_image_url, banner_image_url, highlights, difficulty_level, group_size, group_size_min, group_size_max, minimum_age, start_location, end_location, is_available, seats_remaining, status, is_featured, is_popular, seo_title, meta_title, meta_description, og_image_url, updated_at, destinations(name,slug,country), tour_categories(name,slug)';
 // Detail view also embeds the day-by-day itinerary, what's included/excluded,
 // the pricing options and the tour gallery images.
-const detailSelect = `${select}, itinerary_days(day_number,title,description,accommodation,meals,activities,image_url), tour_inclusions(title,sort_order), tour_exclusions(title,sort_order), tour_price_options(id,tour_id,title,label,price,currency,price_type,description,sort_order,created_at,updated_at), tour_images(id,tour_id,image_url,alt_text,caption,sort_order,is_featured,created_at,updated_at)`;
+const TOUR_DETAIL_TAIL =
+  ', tour_inclusions(title,sort_order), tour_exclusions(title,sort_order), tour_price_options(id,tour_id,title,label,price,currency,price_type,description,sort_order,created_at,updated_at), tour_images(id,tour_id,image_url,alt_text,caption,sort_order,is_featured,created_at,updated_at)';
+
+const ITINERARY_FIELDS = 'day_number,title,description,accommodation,meals,activities,image_url';
+
+// The linked property and its gallery. Requires the 2026-08-27 migration.
+const ITINERARY_LODGE =
+  ',accommodation_id,lodge:lodges!itinerary_days_accommodation_id_fkey(id,name,slug,lodge_type,accommodation_level,hero_image_url,image_url,lodge_images(id,image_url,alt_text,caption,sort_order,is_cover),destinations(name))';
+
+const detailSelect = `${select}, itinerary_days(${ITINERARY_FIELDS}${ITINERARY_LODGE})${TOUR_DETAIL_TAIL}`;
+
+// The same view WITHOUT the property embed, for a database that has not had the
+// migration applied. PostgREST rejects the whole query when it cannot resolve an
+// embed, so without this a pending migration would take every tour page down
+// rather than merely hiding the gallery. Built explicitly rather than by
+// stripping the string, so it cannot silently drift.
+const detailSelectLegacy = `${select}, itinerary_days(${ITINERARY_FIELDS})${TOUR_DETAIL_TAIL}`;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const listTours = asyncHandler(async (req, res) => {
@@ -41,12 +57,17 @@ export const listTours = asyncHandler(async (req, res) => {
 export const getTour = asyncHandler(async (req, res) => {
   const key = req.params.slug;
   const column = uuidPattern.test(key) ? 'id' : 'slug';
-  const { data, error } = await supabase
-    .from('tours')
-    .select(detailSelect)
-    .eq(column, key)
-    .is('deleted_at', null)
-    .maybeSingle();
+  const fetchWith = (select: string) =>
+    supabase.from('tours').select(select).eq(column, key).is('deleted_at', null).maybeSingle();
+
+  let { data, error } = await fetchWith(detailSelect);
+
+  // PGRST200 = an embed could not be resolved, which here means the lodge link
+  // migration has not been applied yet. Serve the tour without the property
+  // gallery rather than failing the page.
+  if (error && (error as { code?: string }).code === 'PGRST200') {
+    ({ data, error } = await fetchWith(detailSelectLegacy));
+  }
 
   if (error) throw new AppError('Unable to fetch tours.', 500, [error]);
   if (!data) throw new AppError('Record not found.', 404);
