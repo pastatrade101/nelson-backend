@@ -95,6 +95,8 @@ export const permissions = [
   'lodge_images.create',
   'lodge_images.update',
   'lodge_images.delete',
+  'lodge_details.view',
+  'lodge_details.update',
   'messages.view',
   'messages.update',
   'messages.archive',
@@ -188,6 +190,8 @@ const contentPermissions: PermissionKey[] = [
   'lodge_images.view',
   'lodge_images.create',
   'lodge_images.update',
+  'lodge_details.view',
+  'lodge_details.update',
   'ai_conversations.view',
   'tour_matches.view'
 ];
@@ -226,6 +230,7 @@ export const defaultRolePermissions: Record<AdminRole, PermissionKey[]> = {
     'market_pages.view',
     'safari_essentials.view',
     'lodge_images.view',
+    'lodge_details.view',
     'ai_conversations.view',
     'tour_matches.view'
   ],
@@ -246,6 +251,7 @@ export const defaultRolePermissions: Record<AdminRole, PermissionKey[]> = {
     'market_pages.view',
     'safari_essentials.view',
     'lodge_images.view',
+    'lodge_details.view',
     'messages.view',
     'settings.view',
     'ai_conversations.view',
