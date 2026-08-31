@@ -10,7 +10,7 @@ export const listGalleryImages = asyncHandler(async (req, res) => {
     searchColumns: ['title', 'alt_text', 'caption', 'travel_month', 'guest_quote'],
     statusColumn: 'status',
     defaultStatus: 'published',
-    filters: ['destination_id', 'tour_id', 'media_type'],
+    filters: ['destination_id', 'tour_id', 'media_type', 'category'],
     orderBy: 'sort_order',
     ascending: true
   });
