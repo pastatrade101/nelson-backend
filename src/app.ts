@@ -3,6 +3,8 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import morgan from 'morgan';
+
+import { cacheStats, publicCache, publicCacheHeaders } from './middleware/cache.middleware';
 import { allowedOrigins, env } from './config/env';
 import authRoutes from './routes/auth.routes';
 import aiTravelAdvisorRoutes from './routes/ai-travel-advisor.routes';
@@ -101,10 +103,18 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true }));
 
+// Public catalogue reads are cached in-process for a short window. This sits in
+// front of the controllers on purpose: the metered resource is Supabase egress,
+// spent when a controller queries PostgREST, so a hit here is the only kind that
+// actually avoids it. Authenticated requests bypass entirely — see the module.
+app.use(publicCacheHeaders);
+app.use(publicCache);
+
 app.get('/api/health', (_req, res) => {
   return sendSuccess(res, 'API is healthy.', {
     uptime: process.uptime(),
-    environment: env.NODE_ENV
+    environment: env.NODE_ENV,
+    cache: cacheStats
   });
 });
 
