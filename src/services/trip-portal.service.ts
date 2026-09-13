@@ -38,35 +38,59 @@ export const verifyTripSession = (token: string | undefined): string | null => {
  * revoked so only the latest one works (regenerating disables an old/leaked
  * link). Returns the full URL — only the hash is persisted.
  */
-export const createTripLink = async (bookingId: string, adminId: string | null) => {
-  const { data: booking, error } = await supabase
-    .from('booking_requests')
-    .select('id')
-    .eq('id', bookingId)
-    .is('deleted_at', null)
-    .maybeSingle();
-  if (error) throw new AppError('Unable to load booking.', 500, [error]);
-  if (!booking) throw new AppError('Booking not found.', 404);
+export type LinkPurpose = 'trip' | 'guest_details';
 
-  // Revoke existing active links for this booking.
+/** Where each kind of link lands. Keep in step with the frontend routes. */
+const LINK_PATH: Record<LinkPurpose, string> = {
+  trip: 'trip',
+  guest_details: 'guest-details'
+};
+
+export const createTripLink = async (
+  bookingId: string | null,
+  adminId: string | null,
+  purpose: LinkPurpose = 'trip',
+  submissionId: string | null = null
+) => {
+  // A guest-details link may target a standalone submission that has no booking.
+  // Everything else still resolves through a booking, as the trip portal does.
+  if (!submissionId) {
+    const { data: booking, error } = await supabase
+      .from('booking_requests')
+      .select('id')
+      .eq('id', bookingId as string)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (error) throw new AppError('Unable to load booking.', 500, [error]);
+    if (!booking) throw new AppError('Booking not found.', 404);
+  }
+
+  // Revoke existing active links for this booking OF THE SAME PURPOSE. Scoped
+  // by purpose so issuing a guest-details link does not silently kill the
+  // customer's trip-portal link, and vice versa.
+  const targetColumn = submissionId ? 'submission_id' : 'booking_id';
+  const targetValue = submissionId ?? (bookingId as string);
   await supabase
     .from('trip_access_tokens')
     .update({ revoked_at: new Date().toISOString() })
-    .eq('booking_id', bookingId)
+    .eq(targetColumn, targetValue)
+    .eq('purpose', purpose)
     .is('revoked_at', null);
 
   const rawToken = randomBytes(32).toString('base64url');
   const expiresAt = new Date(Date.now() + LINK_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
   const { error: insertError } = await supabase.from('trip_access_tokens').insert({
-    booking_id: bookingId,
+    booking_id: submissionId ? null : bookingId,
+    submission_id: submissionId,
     token_hash: sha256(rawToken),
     expires_at: expiresAt,
+    purpose,
     created_by: adminId
   });
   if (insertError) throw new AppError('Unable to create trip link.', 500, [insertError]);
 
-  return { url: `${frontendOrigin()}/trip/${rawToken}`, expiresAt };
+  return { url: `${frontendOrigin()}/${LINK_PATH[purpose]}/${rawToken}`, expiresAt };
 };
 
 /**
@@ -132,18 +156,48 @@ export const requestTripAccessByEmail = async (email: string): Promise<void> => 
 };
 
 /** Exchange a raw magic-link token for the booking id it grants access to. */
-export const redeemTripToken = async (rawToken: string): Promise<string | null> => {
+export const redeemTripToken = async (
+  rawToken: string,
+  purpose: LinkPurpose = 'trip'
+): Promise<string | null> => {
   if (!rawToken || rawToken.length < 20) return null;
   const { data, error } = await supabase
     .from('trip_access_tokens')
-    .select('id, booking_id, expires_at, revoked_at')
+    .select('id, booking_id, submission_id, expires_at, revoked_at, purpose')
     .eq('token_hash', sha256(rawToken))
     .maybeSingle();
   if (error || !data) return null;
   if (data.revoked_at || new Date(data.expires_at).getTime() < Date.now()) return null;
+  // A trip-portal token must not open the passport form, and vice versa.
+  // Legacy rows predate the column and default to 'trip'.
+  if ((data.purpose ?? 'trip') !== purpose) return null;
 
   await supabase.from('trip_access_tokens').update({ last_used_at: new Date().toISOString() }).eq('id', data.id);
-  return data.booking_id as string;
+  return (data.booking_id ?? null) as string | null;
+};
+
+/**
+ * Resolve a guest-details token to what it grants access to. A token points at
+ * EITHER a standalone submission or a booking — never both, enforced by a CHECK.
+ */
+export const redeemGuestToken = async (
+  rawToken: string
+): Promise<{ submissionId: string | null; bookingId: string | null } | null> => {
+  if (!rawToken || rawToken.length < 20) return null;
+  const { data, error } = await supabase
+    .from('trip_access_tokens')
+    .select('id, booking_id, submission_id, expires_at, revoked_at, purpose')
+    .eq('token_hash', sha256(rawToken))
+    .maybeSingle();
+  if (error || !data) return null;
+  if (data.revoked_at || new Date(data.expires_at).getTime() < Date.now()) return null;
+  if ((data.purpose ?? 'trip') !== 'guest_details') return null;
+
+  await supabase.from('trip_access_tokens').update({ last_used_at: new Date().toISOString() }).eq('id', data.id);
+  return {
+    submissionId: (data.submission_id ?? null) as string | null,
+    bookingId: (data.booking_id ?? null) as string | null
+  };
 };
 
 /**
