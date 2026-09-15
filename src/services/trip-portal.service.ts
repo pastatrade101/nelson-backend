@@ -15,6 +15,31 @@ export const TRIP_COOKIE = 'gf_trip';
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 const frontendOrigin = () => env.FRONTEND_URL.split(',')[0].replace(/\/$/, '');
 
+/**
+ * A readable label makes a guest link recognisable without becoming its
+ * credential. The random token after `~` is still what grants access.
+ */
+const friendlyLinkLabel = (value: string | null | undefined): string =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48) || 'traveller';
+
+/**
+ * Guest links may be presented as `jane-doe~<token>`. The label is deliberately
+ * ignored during authentication: it is only a readable URL hint and may be
+ * changed without weakening or invalidating the random secret.
+ */
+const guestLinkCredential = (presentedValue: string): string => {
+  const value = presentedValue.trim();
+  const separator = value.lastIndexOf('~');
+  return separator === -1 ? value : value.slice(separator + 1);
+};
+
 type TripSession = { bid: string; scope: 'trip' };
 
 /** Sign the per-booking session token stored in the httpOnly cookie. */
@@ -50,19 +75,32 @@ export const createTripLink = async (
   bookingId: string | null,
   adminId: string | null,
   purpose: LinkPurpose = 'trip',
-  submissionId: string | null = null
+  submissionId: string | null = null,
+  linkLabel: string | null = null
 ) => {
+  let resolvedLinkLabel = linkLabel;
+
   // A guest-details link may target a standalone submission that has no booking.
   // Everything else still resolves through a booking, as the trip portal does.
-  if (!submissionId) {
+  if (submissionId) {
+    const { data: submission, error } = await supabase
+      .from('guest_detail_submissions')
+      .select('id, label, booking_reference')
+      .eq('id', submissionId)
+      .maybeSingle();
+    if (error) throw new AppError('Unable to load guest form.', 500, [error]);
+    if (!submission) throw new AppError('Guest form not found.', 404);
+    resolvedLinkLabel ||= String(submission.label ?? submission.booking_reference ?? '');
+  } else {
     const { data: booking, error } = await supabase
       .from('booking_requests')
-      .select('id')
+      .select('id, full_name')
       .eq('id', bookingId as string)
       .is('deleted_at', null)
       .maybeSingle();
     if (error) throw new AppError('Unable to load booking.', 500, [error]);
     if (!booking) throw new AppError('Booking not found.', 404);
+    resolvedLinkLabel ||= String(booking.full_name ?? '');
   }
 
   // Revoke existing active links for this booking OF THE SAME PURPOSE. Scoped
@@ -90,7 +128,11 @@ export const createTripLink = async (
   });
   if (insertError) throw new AppError('Unable to create trip link.', 500, [insertError]);
 
-  return { url: `${frontendOrigin()}/${LINK_PATH[purpose]}/${rawToken}`, expiresAt };
+  const publicCredential = purpose === 'guest_details'
+    ? `${friendlyLinkLabel(resolvedLinkLabel)}~${rawToken}`
+    : rawToken;
+
+  return { url: `${frontendOrigin()}/${LINK_PATH[purpose]}/${publicCredential}`, expiresAt };
 };
 
 /**
@@ -181,8 +223,9 @@ export const redeemTripToken = async (
  * EITHER a standalone submission or a booking — never both, enforced by a CHECK.
  */
 export const redeemGuestToken = async (
-  rawToken: string
+  presentedToken: string
 ): Promise<{ submissionId: string | null; bookingId: string | null } | null> => {
+  const rawToken = guestLinkCredential(presentedToken);
   if (!rawToken || rawToken.length < 20) return null;
   const { data, error } = await supabase
     .from('trip_access_tokens')

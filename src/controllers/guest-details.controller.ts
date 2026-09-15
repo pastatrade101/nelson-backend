@@ -251,7 +251,8 @@ export const uploadGuestDocument = asyncHandler(async (req, res) => {
 
 /** Issue (or reissue) the private link for a booking-backed form. */
 export const createGuestLink = asyncHandler(async (req, res) => {
-  const { url, expiresAt } = await createTripLink(req.params.id, req.user?.sub ?? null, 'guest_details');
+  const linkLabel = text(req.body?.link_name, 80);
+  const { url, expiresAt } = await createTripLink(req.params.id, req.user?.sub ?? null, 'guest_details', null, linkLabel);
   return sendSuccess(res, 'Guest link created.', { url, expiresAt });
 });
 
@@ -274,7 +275,14 @@ export const createStandaloneForm = asyncHandler(async (req, res) => {
     .single();
   if (error) throw new AppError('Unable to create the form.', 500, [error]);
 
-  const { url, expiresAt } = await createTripLink(null, req.user?.sub ?? null, 'guest_details', created.id as string);
+  const linkLabel = text(req.body?.link_name, 80) ?? label;
+  const { url, expiresAt } = await createTripLink(
+    null,
+    req.user?.sub ?? null,
+    'guest_details',
+    created.id as string,
+    linkLabel
+  );
   return sendSuccess(res, 'Guest form created.', { submission: created, url, expiresAt }, 201);
 });
 
@@ -305,7 +313,14 @@ export const listGuestForms = asyncHandler(async (_req, res) => {
 
 /** Issue (or reissue) the link for a standalone form, by submission id. */
 export const createStandaloneLink = asyncHandler(async (req, res) => {
-  const { url, expiresAt } = await createTripLink(null, req.user?.sub ?? null, 'guest_details', req.params.submissionId);
+  const linkLabel = text(req.body?.link_name, 80);
+  const { url, expiresAt } = await createTripLink(
+    null,
+    req.user?.sub ?? null,
+    'guest_details',
+    req.params.submissionId,
+    linkLabel
+  );
   return sendSuccess(res, 'Guest link created.', { url, expiresAt });
 });
 
