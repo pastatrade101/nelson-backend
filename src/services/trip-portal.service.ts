@@ -27,7 +27,7 @@ const friendlyLinkLabel = (value: string | null | undefined): string =>
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 48) || 'traveller';
+    .slice(0, 72) || 'traveller';
 
 /**
  * Guest links may be presented as `jane-doe~<token>`. The label is deliberately
@@ -85,22 +85,28 @@ export const createTripLink = async (
   if (submissionId) {
     const { data: submission, error } = await supabase
       .from('guest_detail_submissions')
-      .select('id, label, booking_reference')
+      .select('id, label, booking_reference, reference')
       .eq('id', submissionId)
       .maybeSingle();
     if (error) throw new AppError('Unable to load guest form.', 500, [error]);
     if (!submission) throw new AppError('Guest form not found.', 404);
-    resolvedLinkLabel ||= String(submission.label ?? submission.booking_reference ?? '');
+    // Name AND reference, so the guest sees both what it is and which form it
+    // belongs to: "miller-family-emn-gf-000004~<token>".
+    resolvedLinkLabel ||= [submission.label ?? submission.booking_reference ?? '', submission.reference ?? '']
+      .filter(Boolean)
+      .join(' ');
   } else {
     const { data: booking, error } = await supabase
       .from('booking_requests')
-      .select('id, full_name')
+      .select('id, full_name, booking_code')
       .eq('id', bookingId as string)
       .is('deleted_at', null)
       .maybeSingle();
     if (error) throw new AppError('Unable to load booking.', 500, [error]);
     if (!booking) throw new AppError('Booking not found.', 404);
-    resolvedLinkLabel ||= String(booking.full_name ?? '');
+    // The booking's own code is the reference here, so the office never sees
+    // two numbers for the same party.
+    resolvedLinkLabel ||= [booking.full_name ?? '', booking.booking_code ?? ''].filter(Boolean).join(' ');
   }
 
   // Revoke existing active links for this booking OF THE SAME PURPOSE. Scoped
@@ -115,7 +121,12 @@ export const createTripLink = async (
     .eq('purpose', purpose)
     .is('revoked_at', null);
 
-  const rawToken = randomBytes(32).toString('base64url');
+  // 16 bytes is 128 bits of entropy. Against a link that also expires and can be
+  // revoked, that is not brute-forceable — but it halves the visible secret from
+  // 43 characters to 22, which is the difference between a link a guest trusts
+  // and one that looks like spam. Tokens already issued are longer and keep
+  // working: nothing checks the length beyond a sanity floor of 20.
+  const rawToken = randomBytes(16).toString('base64url');
   const expiresAt = new Date(Date.now() + LINK_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
   const { error: insertError } = await supabase.from('trip_access_tokens').insert({

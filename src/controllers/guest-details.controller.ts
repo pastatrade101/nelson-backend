@@ -70,6 +70,9 @@ const submissionForToken = async (rawToken: string) => {
     .insert({
       booking_id: bookingId,
       booking_reference: (booking as Row)?.booking_code ?? null,
+      // Mirror the booking's own code rather than minting a second number for
+      // the same party. Standalone forms fall back to the column default.
+      ...((booking as Row)?.booking_code ? { reference: (booking as Row).booking_code } : {}),
       lead_email: (booking as Row)?.email ?? null,
       arrival_date: (booking as Row)?.travel_date ?? null
     })
