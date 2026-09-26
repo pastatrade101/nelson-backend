@@ -6,6 +6,22 @@ import { cleanSearch, getPagination, getQueryString, paginationMeta } from '../u
 
 const select = '*, tours(id,title,slug,duration_days,duration_nights,status,destinations(name,slug,country))';
 
+// The catalogue activities linked to each day, so the admin editor can show
+// which are ticked. Requires the 2026-09-26 migration; see the fallback below.
+const selectWithActivities =
+  `${select}, day_activities:itinerary_day_activities(sort_order,activity:activities(id,name,slug,category,duration_label,price_from,currency,price_unit,badge,hero_image_url,image_url,status))`;
+
+/**
+ * PostgREST rejects the WHOLE query when an embed cannot be resolved, so on a
+ * database that has not had the join-table migration this would take the
+ * entire day editor down rather than merely hide the activity picker. Retry
+ * without the embed on that specific error, matching tours.controller.
+ */
+const isMissingEmbed = (error: unknown) => {
+  const code = (error as { code?: string } | null)?.code;
+  return code === 'PGRST200' || code === '42P01';
+};
+
 const duplicateDayExists = async (tourId: string, dayNumber: number, excludeId?: string) => {
   let query = supabase
     .from('itinerary_days')
@@ -51,12 +67,16 @@ export const listItineraries = asyncHandler(async (req, res) => {
 });
 
 export const listTourItineraries = asyncHandler(async (req, res) => {
-  const { data, error } = await supabase
-    .from('itinerary_days')
-    .select(select)
-    .eq('tour_id', req.params.tourId)
-    .order('day_number', { ascending: true })
-    .order('created_at', { ascending: true });
+  const fetchWith = (sel: string) =>
+    supabase
+      .from('itinerary_days')
+      .select(sel)
+      .eq('tour_id', req.params.tourId)
+      .order('day_number', { ascending: true })
+      .order('created_at', { ascending: true });
+
+  let { data, error } = await fetchWith(selectWithActivities);
+  if (error && isMissingEmbed(error)) ({ data, error } = await fetchWith(select));
 
   if (error) throw new AppError('Unable to fetch tour itinerary days.', 500, [error]);
 
@@ -141,4 +161,43 @@ export const deleteItinerary = asyncHandler(async (req, res) => {
   await safeAudit({ action: 'delete', entityId: req.params.id, entityType: 'itinerary_days', oldData: previous, req });
 
   return sendSuccess(res, 'Itinerary day deleted successfully.');
+});
+
+/**
+ * Replace the catalogue activities linked to one itinerary day.
+ *
+ * Replace rather than diff: the editor hands back the whole list in the order
+ * the user arranged it, so the order IS the payload. Delete-then-insert keeps
+ * that honest and cannot leave a stale row behind.
+ *
+ * The day's free-text `activities` column is untouched — the two coexist, and
+ * the public page shows whichever is present.
+ */
+export const setDayActivities = asyncHandler(async (req, res) => {
+  const dayId = req.params.id;
+  const ids = Array.isArray(req.body?.activity_ids)
+    ? (req.body.activity_ids as unknown[]).map(String).filter(Boolean)
+    : [];
+
+  const { data: day } = await supabase.from('itinerary_days').select('id').eq('id', dayId).maybeSingle();
+  if (!day) throw new AppError('Itinerary day not found.', 404);
+
+  const { error: clearError } = await supabase.from('itinerary_day_activities').delete().eq('day_id', dayId);
+  if (clearError) throw new AppError('Unable to update the day\u2019s activities.', 500, [clearError]);
+
+  if (ids.length) {
+    // De-duplicated: the table has a unique (day_id, activity_id) and sending
+    // the same activity twice is a mistake rather than something to persist.
+    const rows = [...new Set(ids)].map((activity_id, sort_order) => ({ day_id: dayId, activity_id, sort_order }));
+    const { error } = await supabase.from('itinerary_day_activities').insert(rows);
+    if (error) throw new AppError('Unable to link those activities.', 500, [error]);
+  }
+
+  const { data } = await supabase
+    .from('itinerary_day_activities')
+    .select('sort_order, activity:activities(id,name,slug,category,duration_label,price_from,currency,badge,hero_image_url,image_url)')
+    .eq('day_id', dayId)
+    .order('sort_order');
+
+  return sendSuccess(res, 'Day activities updated.', { activities: data ?? [] });
 });

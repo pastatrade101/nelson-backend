@@ -25,7 +25,13 @@ const ITINERARY_FIELDS = 'day_number,title,description,accommodation,meals,activ
 const ITINERARY_LODGE =
   ',accommodation_id,lodge:lodges!itinerary_days_accommodation_id_fkey(id,name,slug,lodge_type,accommodation_level,hero_image_url,image_url,lodge_images(id,image_url,alt_text,caption,sort_order,is_cover),destinations(name))';
 
-const detailSelect = `${select}, itinerary_days(${ITINERARY_FIELDS}${ITINERARY_LODGE})${TOUR_DETAIL_TAIL}`;
+// Catalogue activities linked to the day, through the join table. Requires the
+// 2026-09-26 migration; folded into the same fallback as the property embed so
+// one pending migration cannot take every tour page down.
+const ITINERARY_ACTIVITIES =
+  ',day_activities:itinerary_day_activities(sort_order,activity:activities(id,name,slug,category,duration_label,price_from,currency,price_unit,badge,hero_image_url,image_url,status))';
+
+const detailSelect = `${select}, itinerary_days(${ITINERARY_FIELDS}${ITINERARY_LODGE}${ITINERARY_ACTIVITIES})${TOUR_DETAIL_TAIL}`;
 
 // The same view WITHOUT the property embed, for a database that has not had the
 // migration applied. PostgREST rejects the whole query when it cannot resolve an
