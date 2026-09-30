@@ -26,9 +26,10 @@ import type { NextFunction, Request, Response } from 'express';
  *      private route added later is therefore uncached by default rather than
  *      cached by accident.
  *   4. Only 200 responses are stored, so an error is never replayed.
- *   5. Any write to /api/* clears everything. Writes are rare, and a blunt flush
- *      is far easier to reason about than per-table invalidation — the admin
- *      sees their own edit immediately rather than up to a minute later.
+ *   5. Any write to /api/* clears everything — except the writes visitors make
+ *      on ordinary page views (VISITOR_WRITES), which change nothing a cached
+ *      route returns. A blunt flush is far easier to reason about than
+ *      per-table invalidation, and the admin sees their own edit immediately.
  */
 
 type Entry = { body: unknown; expires: number };
@@ -39,15 +40,17 @@ const store = new Map<string, Entry>();
 const MAX_ENTRIES = 500;
 
 /**
- * Seconds to hold a public read. 60 is a deliberate compromise: long enough to
- * absorb a burst of renders, short enough that an editor who publishes a change
- * sees it almost at once — and any admin write flushes the cache outright, so
- * their own edits are visible immediately regardless. Set to 0 to disable.
+ * Seconds to hold a public read. Every admin write flushes the cache outright,
+ * so an editor's own change shows at once whatever this is; the TTL only bounds
+ * how long a change made outside the API (SQL in the Supabase editor) takes to
+ * appear. It was 60, which re-queried the whole catalogue every minute of
+ * traffic — each query is a Supabase request, billed as egress and as log
+ * ingestion. Set to 0 to disable.
  *
  * Not prefixed PUBLIC_: that prefix means browser-exposed in the SvelteKit app,
  * and this is a backend-only value.
  */
-const TTL_MS = Math.max(0, Number(process.env.API_CACHE_TTL_SECONDS ?? 60)) * 1000;
+const TTL_MS = Math.max(0, Number(process.env.API_CACHE_TTL_SECONDS ?? 600)) * 1000;
 
 /**
  * Public, read-only catalogue routes. These are the ones the public site pulls
@@ -89,6 +92,22 @@ const CACHEABLE = [
   '/api/public'
 ];
 
+/**
+ * Writes a visitor makes on an ordinary page view. None changes what a cached
+ * route returns, and flushing on them emptied the cache on nearly every page
+ * view (every visit posts analytics), sending each following render back to
+ * Supabase. Only unauthenticated requests are exempt: an admin write to any of
+ * these paths still flushes.
+ */
+const VISITOR_WRITES = ['/api/analytics', '/api/contact', '/api/ai', '/api/trip', '/api/guest-details', '/api/auth'];
+
+const isContentWrite = (req: Request): boolean => {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return false;
+  if (!req.path.startsWith('/api/')) return false;
+  if (isAuthenticated(req)) return true;
+  return !VISITOR_WRITES.some((p) => req.path === p || req.path.startsWith(`${p}/`));
+};
+
 /** Counters, surfaced on /api/health so the effect is measurable in production. */
 export const cacheStats = { hits: 0, misses: 0, bypassed: 0, stored: 0, flushes: 0 };
 
@@ -120,8 +139,8 @@ export const flushPublicCache = (): void => {
 };
 
 export const publicCache = (req: Request, res: Response, next: NextFunction): void => {
-  // A write invalidates the whole catalogue, then carries on to the controller.
-  if (req.method !== 'GET' && req.path.startsWith('/api/')) {
+  // A content write invalidates the whole catalogue, then carries on to the controller.
+  if (isContentWrite(req)) {
     flushPublicCache();
     return next();
   }
