@@ -11,6 +11,12 @@ export const travelStyleCreateSchema = z.object({
   desires: z.array(z.string()).optional(),
   concerns: z.array(z.string()).optional(),
   persona: z.string().optional().nullable(),
+  /** The safari-style card (tour category) this style is written for; '' clears it. */
+  category_id: z
+    .union([z.string().uuid(), z.literal('')])
+    .optional()
+    .nullable()
+    .transform((value) => (value === '' ? null : value)),
   hero_image_url: optionalUrl,
   image_url: optionalUrl,
   status: statusSchema.default('draft'),
