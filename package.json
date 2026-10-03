@@ -9,6 +9,8 @@
     "start": "node dist/server.js",
     "db:pipeline": "tsx src/scripts/db-pipeline.ts",
     "db:pipeline:prod": "node dist/scripts/db-pipeline.js",
+    "db:run": "tsx src/scripts/db-run.ts",
+    "db:run:prod": "node dist/scripts/db-run.js",
     "ai:nightly": "tsx src/jobs/ai-nightly.ts",
     "ai:nightly:prod": "node dist/jobs/ai-nightly.js",
     "backfill:thumbnails": "tsx src/scripts/backfill-thumbnails.ts",

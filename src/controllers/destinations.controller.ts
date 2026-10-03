@@ -63,3 +63,69 @@ export const updateDestination = asyncHandler(async (req, res) => {
 export const deleteDestination = asyncHandler(async (req, res) => {
   return softDeleteRecord(res, 'destinations', req.params.id, req);
 });
+
+/**
+ * Published tours connected to a destination, through the data model only:
+ *   - `destination`: the tour's own destination is this one;
+ *   - `stays`: one of its itinerary days sleeps at a lodge in this destination
+ *     (itinerary_days.accommodation_id -> lodges.destination_id).
+ * Destination matches come first. Each item carries `match` so the page can
+ * word the two differently. Read-only and public, like the tour list.
+ */
+const DESTINATION_TOUR_FIELDS =
+  'id,title,slug,short_description,duration_days,duration_nights,price_from,currency,main_image_url,banner_image_url,budget_tier,persona_tags,is_featured,is_popular,status,destinations(name,slug),tour_categories(name,slug)';
+
+export const listDestinationTours = asyncHandler(async (req, res) => {
+  const destinationId = String(req.params.id ?? '');
+  const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 48);
+
+  const { data: direct, error } = await supabase
+    .from('tours')
+    .select(DESTINATION_TOUR_FIELDS)
+    .eq('destination_id', destinationId)
+    .eq('status', 'published')
+    .is('deleted_at', null)
+    .order('is_featured', { ascending: false })
+    .limit(limit);
+  if (error) throw new AppError('Unable to fetch tours for this destination.', 500, [error]);
+
+  const seen = new Set<string>();
+  const items: Record<string, unknown>[] = [];
+  for (const row of (direct ?? []) as Record<string, unknown>[]) {
+    seen.add(String(row.id));
+    items.push({ ...row, match: 'destination' });
+  }
+
+  // Tours that stay at this destination's lodges. Best-effort: on a database
+  // without the day -> lodge link this simply adds nothing.
+  if (items.length < limit) {
+    const { data: lodges } = await supabase
+      .from('lodges')
+      .select('id')
+      .eq('destination_id', destinationId)
+      .eq('status', 'published')
+      .is('deleted_at', null);
+    const lodgeIds = ((lodges ?? []) as { id: string }[]).map((l) => l.id);
+    if (lodgeIds.length) {
+      const { data: days } = await supabase
+        .from('itinerary_days')
+        .select('tour_id')
+        .in('accommodation_id', lodgeIds)
+        .limit(500);
+      const tourIds = [...new Set(((days ?? []) as { tour_id: string }[]).map((d) => d.tour_id))].filter((id) => id && !seen.has(id));
+      if (tourIds.length) {
+        const { data: staying } = await supabase
+          .from('tours')
+          .select(DESTINATION_TOUR_FIELDS)
+          .in('id', tourIds.slice(0, 100))
+          .eq('status', 'published')
+          .is('deleted_at', null)
+          .limit(limit - items.length);
+        for (const row of (staying ?? []) as Record<string, unknown>[]) items.push({ ...row, match: 'stays' });
+      }
+    }
+  }
+
+  return sendSuccess(res, 'Destination tours fetched successfully.', { items });
+});
+

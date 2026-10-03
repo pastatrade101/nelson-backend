@@ -4,6 +4,7 @@ import {
   deleteDestination,
   getDestination,
   listDestinationCountries,
+  listDestinationTours,
   listDestinations,
   updateDestination
 } from '../controllers/destinations.controller';
@@ -17,6 +18,8 @@ const router = Router();
 router.get('/', listDestinations);
 // Must precede '/:slug', or 'countries' is read as a destination slug.
 router.get('/countries', listDestinationCountries);
+// Tours connected through the data model (own destination, or a night at one of its lodges).
+router.get('/:id/tours', listDestinationTours);
 router.get('/:slug', getDestination);
 router.post('/', authenticate, requirePermission('destinations.create'), validate({ body: destinationCreateSchema }), createDestination);
 router.put('/:id', authenticate, requirePermission('destinations.update'), validate({ body: destinationUpdateSchema }), updateDestination);

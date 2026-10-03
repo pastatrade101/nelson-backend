@@ -9,6 +9,9 @@ export const itineraryCreateSchema = z.object({
   title: z.string().min(2),
   description: optionalText,
   accommodation: optionalText,
+  // The lodge this night is spent at (lodges.id). `accommodation` stays as the
+  // text printed on the day, and the fallback for properties not in the catalogue.
+  accommodation_id: z.preprocess((v) => (v === '' ? null : v), z.string().uuid().nullable().optional()),
   meals: optionalText,
   activities: optionalText,
   image_url: optionalUrl

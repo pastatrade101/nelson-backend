@@ -8,12 +8,12 @@ import {
   updateRecord
 } from '../utils/supabase-helpers';
 
-const select = '*, destinations(name,slug,country), tour_categories(name,slug)';
+const select = '*, destinations(name,slug,country,deleted_at), tour_categories(name,slug)';
 // Lean projection for listings: everything the cards use, minus the detail-only
 // heavy fields (full_description, sample_itinerary). getTour still uses the full
 // select + embeds below.
 const listSelect =
-  'id, title, slug, short_description, destination_id, countries, category_id, experience_type, persona_tags, duration_days, duration_nights, budget_tier, price_from, currency, main_image_url, banner_image_url, highlights, difficulty_level, group_size, group_size_min, group_size_max, minimum_age, start_location, end_location, is_available, seats_remaining, status, is_featured, is_popular, seo_title, meta_title, meta_description, og_image_url, updated_at, destinations(name,slug,country), tour_categories(name,slug)';
+  'id, title, slug, short_description, destination_id, countries, category_id, experience_type, persona_tags, duration_days, duration_nights, budget_tier, price_from, currency, main_image_url, banner_image_url, highlights, difficulty_level, group_size, group_size_min, group_size_max, minimum_age, start_location, end_location, is_available, seats_remaining, status, is_featured, is_popular, seo_title, meta_title, meta_description, og_image_url, updated_at, destinations(name,slug,country,deleted_at), tour_categories(name,slug)';
 // Detail view also embeds the day-by-day itinerary, what's included/excluded,
 // the pricing options and the tour gallery images.
 const TOUR_DETAIL_TAIL =
@@ -21,9 +21,10 @@ const TOUR_DETAIL_TAIL =
 
 const ITINERARY_FIELDS = 'day_number,title,description,accommodation,meals,activities,image_url';
 
-// The linked property and its gallery. Requires the 2026-08-27 migration.
+// The linked property, its gallery, and the facts its hover card on the tour
+// page shows. Requires the 2026-08-27 migrations.
 const ITINERARY_LODGE =
-  ',accommodation_id,lodge:lodges!itinerary_days_accommodation_id_fkey(id,name,slug,lodge_type,accommodation_level,hero_image_url,image_url,lodge_images(id,image_url,alt_text,caption,sort_order,is_cover),destinations(name))';
+  ',accommodation_id,lodge:lodges!itinerary_days_accommodation_id_fkey(id,name,slug,lodge_type,accommodation_level,hero_image_url,image_url,short_description,best_for,family_friendly,honeymoon_friendly,children_allowed,minimum_child_age,price_per_night_from,currency,show_rates_publicly,wifi_availability,settings,park_area,region,country,recommended_nights,family_rating,romantic_rating,fly_in_available,transfer_available,lodge_images(id,image_url,alt_text,caption,sort_order,is_cover),destinations(name))';
 
 // Catalogue activities linked to the day, through the join table. Requires the
 // 2026-09-26 migration; folded into the same fallback as the property embed so
