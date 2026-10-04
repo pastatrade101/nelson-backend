@@ -1,3 +1,4 @@
+import { leadContextLines } from '../utils/lead-context';
 import { supabase } from '../config/supabase';
 import { env } from '../config/env';
 import { detailRows, emailLayout, noteBlock, sendEmail } from './email.service';
@@ -53,7 +54,7 @@ export const buildLeadFromBooking = (booking: BookingLike): CrmLead => {
   const fullName = str(booking.full_name);
   const nameParts = fullName.split(/\s+/).filter(Boolean);
   const destinationInterest = str(lc.destination_interest);
-  const tripTitle = str(lc.selected_trip) || str(tour?.title) || destinationInterest;
+  const tripTitle = str(lc.selected_trip) || str(lc.tour_interest) || str(tour?.title) || destinationInterest;
 
   // Exact dates (Plan My Trip) read back into a friendly travel-date string.
   const exactStart = str(lc.exact_start_date);
@@ -111,7 +112,7 @@ export const buildLeadFromBooking = (booking: BookingLike): CrmLead => {
     lead.specialRequests ? `Special requests: ${lead.specialRequests}` : '',
     lead.message ? `Notes: ${lead.message}` : ''
   ].filter(Boolean);
-  lead.summary = lines.join('\n');
+  lead.summary = [...lines, '', 'Complete saved brief:', ...leadContextLines(lc)].join('\n');
 
   return lead;
 };
@@ -157,7 +158,7 @@ export const sendBookingNotification = async (booking: BookingLike): Promise<voi
           ['Accommodation', lead.accommodationPreference],
           ['Interests', lead.travelInterests],
           ['Source', lead.leadSource]
-        ]) + noteBlock('Special requests / message', lead.specialRequests || lead.message);
+        ]) + noteBlock('Special requests', lead.specialRequests) + noteBlock('Traveller notes', lead.message) + noteBlock('Complete trip brief', leadContextLines((booking.lead_context as Record<string, unknown>) ?? {}).join('\n'));
 
       await sendEmail({
         to: env.SPECIALIST_EMAIL,

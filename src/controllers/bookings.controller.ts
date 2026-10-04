@@ -1,3 +1,4 @@
+import { bookingFingerprint } from '../utils/booking-fingerprint';
 import { supabase } from '../config/supabase';
 import { safeAudit } from '../services/audit.service';
 import { generateBookingCode } from '../services/booking-code.service';
@@ -26,6 +27,12 @@ const nullifyEmpties = (input: Record<string, unknown>) => {
 export const createBooking = asyncHandler(async (req, res) => {
   const payload = nullifyEmpties(req.body as Record<string, unknown>);
   const isAdmin = Boolean(req.user);
+  const plannerContext = payload.lead_context as Record<string, unknown> | null;
+  const fingerprint = plannerContext?.form_type === 'emnel_trip_planner' ? bookingFingerprint(payload) : null;
+  const verifyRetry = (record: Record<string, unknown>) => {
+    const savedHash = (record.lead_context as Record<string, unknown> | null)?.submission_fingerprint;
+    if (fingerprint && savedHash && savedHash !== fingerprint) throw new AppError('This request key belongs to a different saved brief. Contact the team before sending another request.', 409);
+  };
 
   // ── Anti-spam: honeypot ────────────────────────────────────────────────────
   // The hidden `hp_company` field is invisible to real users; bots tend to fill
@@ -55,7 +62,7 @@ export const createBooking = asyncHandler(async (req, res) => {
       .eq('idempotency_key', idempotencyKey)
       .is('deleted_at', null)
       .maybeSingle();
-    if (existing) return sendSuccess(res, 'Booking request already received.', existing, 201);
+    if (existing) { verifyRetry(existing); return sendSuccess(res, 'Booking request already received.', existing, 201); }
   }
 
   // ── Anti-spam: duplicate guard ──────────────────────────────────────────────
@@ -102,6 +109,7 @@ export const createBooking = asyncHandler(async (req, res) => {
   delete payload.selected_currency;
   const leadContext = (payload.lead_context as Record<string, unknown> | null) ?? {};
   if (!isAdmin) leadContext.selected_currency = selectedCurrency;
+  if (fingerprint) leadContext.submission_fingerprint = fingerprint;
 
   const bookingCode = await generateBookingCode();
 
@@ -130,7 +138,7 @@ export const createBooking = asyncHandler(async (req, res) => {
         .select(detailSelect)
         .eq('idempotency_key', idempotencyKey)
         .maybeSingle();
-      if (winner) return sendSuccess(res, 'Booking request already received.', winner, 201);
+      if (winner) { verifyRetry(winner); return sendSuccess(res, 'Booking request already received.', winner, 201); }
     }
     throw new AppError('Unable to submit booking request.', 500, [error]);
   }

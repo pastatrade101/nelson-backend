@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { tripPlannerAnswersSchema } from './trip-planner.schema';
 
 export const BOOKING_STATUSES = [
   'pending',
@@ -61,6 +62,17 @@ export const bookingCreateSchema = z.object({
   // Honeypot — must stay empty for humans. Kept in the schema (zod strips unknown
   // keys) so the controller can inspect it, then it is dropped before insert.
   hp_company: z.string().max(120).optional().nullable()
+}).superRefine((booking, ctx) => {
+  if (booking.lead_context?.form_type !== 'emnel_trip_planner') return;
+  const answers = tripPlannerAnswersSchema.safeParse(booking.lead_context.answers);
+  if (!answers.success) {
+    for (const issue of answers.error.issues) ctx.addIssue({ ...issue, path: ['lead_context', 'answers', ...issue.path] });
+    return;
+  }
+  const d = answers.data;
+  if (d.adults !== booking.number_of_adults || d.children !== booking.number_of_children || d.fullName !== booking.full_name.trim() || d.email !== booking.email.trim() || d.country !== booking.country?.trim() || d.phone.trim() !== (booking.phone?.trim() || '') || d.notes.trim() !== (booking.message?.trim() || '') || d.specialRequests.trim() !== (booking.special_requests?.trim() || '') || (d.dateMode === 'exact' ? d.startDate : null) !== (booking.travel_date || null)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['lead_context'], message: 'The trip brief and booking details must match. Please review your request.' });
+  }
 });
 
 export const bookingUpdateSchema = z.object({
