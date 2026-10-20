@@ -21,6 +21,10 @@ type ListOptions = {
    * countries are ['Kenya','Tanzania']). Equality would miss every multi-value row.
    */
   arrayFilters?: { param: string; column: string }[];
+  /** Unique column to order by after `orderBy`, for stable paging (e.g. 'id'). */
+  tieBreaker?: string;
+  /** Enrich the page of rows in place before it is sent (e.g. resolve labels). */
+  afterFetch?: (items: Array<Record<string, unknown>>) => Promise<void>;
 };
 
 // Image columns (per table) whose URLs may have a web-optimized thumbnail in
@@ -81,6 +85,9 @@ export const listRecords = async (req: Request, res: Response, options: ListOpti
     .from(options.table)
     .select(options.select ?? '*', { count: 'exact' })
     .order(options.orderBy ?? 'created_at', { ascending: options.ascending ?? false });
+  // A unique second key, so rows tied on the first (sort_order 0 is common)
+  // come back in one fixed order and consecutive pages can't overlap or skip.
+  if (options.tieBreaker) query = query.order(options.tieBreaker, { ascending: true });
 
   if (options.softDelete ?? true) query = query.is('deleted_at', null);
   if (search && options.searchColumns?.length) {
@@ -111,6 +118,7 @@ export const listRecords = async (req: Request, res: Response, options: ListOpti
 
   const items = (data ?? []) as unknown as Array<Record<string, unknown>>;
   await attachThumbnails(options.table, items);
+  if (options.afterFetch) await options.afterFetch(items);
 
   return sendSuccess(res, 'Records fetched successfully.', {
     items,

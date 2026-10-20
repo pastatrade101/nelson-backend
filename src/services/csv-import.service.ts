@@ -7,6 +7,7 @@
 // Itineraries (tours + days + inclusions + pricing) have their own richer
 // importer (itinerary-import.service) which this module delegates to.
 import { supabase } from '../config/supabase';
+import { FAQ_ANSWER_MAX, FAQ_QUESTION_MAX } from '../schemas/faqs.schema';
 import { rolePermissions, type PermissionKey } from '../config/permissions';
 import { normalizeTier } from '../utils/tiers';
 import { parseCsv } from './itinerary-import.service';
@@ -210,7 +211,7 @@ export const ENTITIES: Record<string, Entity> = {
   faqs: {
     table: 'faqs',
     label: 'FAQs',
-    description: 'Frequently asked questions. Leave "destination" blank for a general FAQ, or set it to attach the question to a specific destination.',
+    description: 'Frequently asked questions (question up to 150 characters, answer up to 600). Leave "destination" blank for a general FAQ, or set it to attach the question to a specific destination. Attach to tours, lodges, categories or travel styles in the FAQ editor.',
     permission: 'faqs.create',
     keys: ['question', 'destination_id'],
     fields: [
@@ -388,6 +389,26 @@ export const importEntity = async (entityKey: string, csvText: string, userId?: 
           payload[ref.fk] = id;
         } else if (ref.required) {
           throw new Error(`Missing required "${ref.col}".`);
+        }
+      }
+
+      if (cfg.table === 'faqs') {
+        // Same caps the API enforces (faqs.schema.ts), as a readable per-row
+        // error rather than a database constraint message.
+        if (String(payload.question ?? '').length > FAQ_QUESTION_MAX) {
+          throw new Error(`Question is longer than ${FAQ_QUESTION_MAX} characters.`);
+        }
+        if (String(payload.answer ?? '').length > FAQ_ANSWER_MAX) {
+          throw new Error(`Answer is longer than ${FAQ_ANSWER_MAX} characters.`);
+        }
+        // Public pages read an FAQ's attachment from the entity pair, not from
+        // destination_id, so a destination row sets both — otherwise it would
+        // land as a general question. A blank destination leaves the pair as it
+        // is: the natural key below also matches questions an editor has since
+        // attached to a tour or lodge, and nulling it would detach them.
+        if (payload.destination_id) {
+          payload.entity_type = 'destinations';
+          payload.entity_id = payload.destination_id;
         }
       }
 
