@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
+    "test": "tsx --test tests/*.test.mjs",
     "start": "node dist/server.js",
     "db:pipeline": "tsx src/scripts/db-pipeline.ts",
     "db:pipeline:prod": "node dist/scripts/db-pipeline.js",

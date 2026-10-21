@@ -48,6 +48,7 @@ import publicRoutes from './routes/public.routes';
 import rolesRoutes from './routes/roles.routes';
 import settingsRoutes from './routes/settings.routes';
 import pageSeoRoutes from './routes/page-seo.routes';
+import internalLinksRoutes from './routes/internal-links.routes';
 import testimonialsRoutes from './routes/testimonials.routes';
 import specialistsRoutes from './routes/specialists.routes';
 import tourInclusionsRoutes from './routes/tour-inclusions.routes';
@@ -162,6 +163,8 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/page-seo', pageSeoRoutes);
+// Link picker, link checks and slug-change repair for admin rich text.
+app.use('/api/internal-links', internalLinksRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/departures', departuresRoutes);
 app.use('/api/branding', brandingRoutes);

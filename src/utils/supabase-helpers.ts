@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
 import { safeAudit } from '../services/audit.service';
+import { repointAfterSlugChange } from '../services/internal-links.service';
 import { createUniqueSlug } from '../services/slug.service';
 import { AppError, sendSuccess } from './api-response';
 import { cleanSearch, getPagination, getQueryString, paginationMeta } from './query';
@@ -209,6 +210,8 @@ export const updateRecord = async (
   if (error) throw new AppError(`Unable to update ${table}.`, 500, [error]);
 
   await safeAudit({ action: 'update', entityId: id, entityType: table, newData: data, oldData: previous, req });
+  // A new slug moves the page; links chosen from the picker follow it.
+  await repointAfterSlugChange(table, previous as Record<string, unknown> | null, data as Record<string, unknown> | null);
 
   return sendSuccess(res, 'Record updated successfully.', data);
 };
