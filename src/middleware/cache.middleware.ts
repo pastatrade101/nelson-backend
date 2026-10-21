@@ -139,9 +139,14 @@ export const flushPublicCache = (): void => {
 };
 
 export const publicCache = (req: Request, res: Response, next: NextFunction): void => {
-  // A content write invalidates the whole catalogue, then carries on to the controller.
+  // A content write invalidates the whole catalogue, then carries on to the
+  // controller — and invalidates it again once the response is sent. A write can
+  // change other records after it starts (a slug change repoints links in every
+  // tour that cites the page; link repair rewrites many tours), and a public read
+  // landing in between would otherwise cache the old copy for the full TTL.
   if (isContentWrite(req)) {
     flushPublicCache();
+    res.on('finish', flushPublicCache);
     return next();
   }
 
