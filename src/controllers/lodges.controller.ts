@@ -46,7 +46,7 @@ export const listLodgeItineraries = asyncHandler(async (req, res) => {
   const { data, error } = await supabase
     .from('tours')
     .select(
-      'id,title,slug,short_description,duration_days,duration_nights,price_from,currency,main_image_url,banner_image_url,budget_tier,persona_tags,is_featured,is_popular,status,destinations(name,slug),tour_categories(name,slug),itinerary_days!inner(accommodation_id)'
+      'id,title,slug,short_description,duration_days,duration_nights,price_from,currency,main_image_url,banner_image_url,budget_tier,persona_tags,is_featured,is_popular,status,category_id,destinations(name,slug),tour_categories(name,slug),itinerary_days!inner(accommodation_id)'
     )
     .eq('itinerary_days.accommodation_id', lodgeId)
     .eq('status', 'published')

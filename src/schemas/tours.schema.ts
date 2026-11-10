@@ -41,7 +41,14 @@ export const tourCreateSchema = z.object({
   meta_title: z.string().optional().nullable(),
   meta_description: z.string().optional().nullable(),
   og_image: optionalUrl,
-  og_image_url: optionalUrl
+  og_image_url: optionalUrl,
+  // "Reason to exist" (task list 2.9; database/migrations/2026-11-10-tour-reason-fields.sql).
+  // No defaults: absent fields are not written, so this deploys before the migration runs.
+  target_traveller: z.string().max(600).optional().nullable(),
+  duration_rationale: z.string().max(800).optional().nullable(),
+  best_season: z.string().max(600).optional().nullable(),
+  not_suited_for: z.string().max(600).optional().nullable(),
+  comfort_tiers: z.array(z.enum(['essential', 'classic', 'luxury', 'ultra_luxury'])).max(4).optional()
 });
 
 export const tourUpdateSchema = tourCreateSchema.partial();
