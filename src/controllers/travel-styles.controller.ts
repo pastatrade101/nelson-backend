@@ -13,7 +13,11 @@ export const listTravelStyles = asyncHandler(async (req, res) => {
     searchColumns: ['name', 'description', 'emotional_promise'],
     statusColumn: 'status',
     defaultStatus: 'published',
-    filters: ['persona', 'is_featured']
+    filters: ['persona', 'is_featured'],
+    // The CMS order (Great Migration first, Day Safaris last), not newest first.
+    orderBy: 'sort_order',
+    ascending: true,
+    tieBreaker: 'name'
   });
 });
 
