@@ -1,9 +1,10 @@
-import { createHash } from 'crypto';
+import { createHmac } from 'crypto';
 import type { Request } from 'express';
 import {
   getEventTimeseries,
   getFunnel,
   getLeadAnalytics,
+  getMainLeads,
   getOverview,
   recordEvent,
   resolveRange
@@ -12,18 +13,31 @@ import { env } from '../config/env';
 import { getTraffic, isGa4Configured } from '../services/ga4.service';
 import { getClarityInsights, isClarityConfigured } from '../services/clarity.service';
 import { getWebsiteIntelligence } from '../services/website-intelligence.service';
-import { getUxInsights } from '../services/ux-insights.service';
 import { asyncHandler } from '../utils/async-handler';
 import { sendSuccess } from '../utils/api-response';
 import { getQueryString } from '../utils/query';
 
-// Hash the client IP (never store raw). Weak abuse signal only.
+/**
+ * The client's network as an opaque daily token (the raw IP is never stored).
+ * It is an HMAC keyed with a server-only secret over the UTC date and the IP:
+ * without the key it cannot be reversed by hashing every address, and a new
+ * date gives a new token, so one network cannot be followed from day to day.
+ * The automated-traffic rule only compares networks within one UTC day, which
+ * is all this needs to support. Rows stored before this change hold the older,
+ * unkeyed hash.
+ */
+const IP_HASH_KEY = env.ANALYTICS_IP_SECRET || env.JWT_SECRET;
 const hashIp = (req: Request): string | null => {
   const fwd = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim();
   const ip = fwd || req.ip || '';
   if (!ip) return null;
-  return createHash('sha256').update(`emnel-analytics:${ip}`).digest('hex').slice(0, 40);
+  const day = new Date().toISOString().slice(0, 10);
+  return createHmac('sha256', IP_HASH_KEY).update(`${day}|${ip}`).digest('hex').slice(0, 40);
 };
+
+// The caller's User-Agent: the ingest refuses crawlers, uptime checks, link
+// previews and scripts by it (never stored).
+const userAgent = (req: Request): string | null => req.get('user-agent') ?? null;
 
 const rangeFromQuery = (req: Request) =>
   resolveRange(getQueryString(req.query, 'range'), getQueryString(req.query, 'from'), getQueryString(req.query, 'to'));
@@ -32,7 +46,7 @@ const rangeFromQuery = (req: Request) =>
 // Body is validated + allowlisted by trackEventSchema. Always 202s, never errors
 // the client (analytics must fail silently).
 export const trackEvent = asyncHandler(async (req, res) => {
-  await recordEvent(req.body, hashIp(req));
+  await recordEvent(req.body, hashIp(req), userAgent(req));
   return sendSuccess(res, 'Event received.', { received: true }, 202);
 });
 
@@ -57,6 +71,15 @@ export const getAnalyticsTimeseries = asyncHandler(async (req, res) => {
   return sendSuccess(res, 'Traffic timeseries fetched.', data);
 });
 
+// The three main leads (Plan My Trip, the itinerary form, WhatsApp): counts,
+// funnels, first-touch sources, and how the in-house tracker, the database and
+// GA4 agree. Development and automated traffic are excluded throughout; `ok`
+// is false when a read failed and the report is the empty shape.
+export const getAnalyticsMainLeads = asyncHandler(async (req, res) => {
+  const data = await getMainLeads(rangeFromQuery(req));
+  return sendSuccess(res, 'Main leads fetched.', data);
+});
+
 // GA4 traffic (Phase 2). Returns { configured: false } when GA4 isn't set up.
 export const getAnalyticsTraffic = asyncHandler(async (req, res) => {
   const data = await getTraffic(rangeFromQuery(req));
@@ -71,20 +94,13 @@ export const getAnalyticsClarity = asyncHandler(async (req, res) => {
   return sendSuccess(res, 'Clarity UX insights fetched.', data);
 });
 
-// Website Intelligence — a deterministic rules engine (no LLM) over the real
-// analytics: health/category scores, executive summary, rule-based alerts,
-// prioritized actions, previous-period benchmarks and a real event timeline.
+// Website Intelligence — a deterministic rules engine over the real analytics:
+// health/category scores, executive summary, rule-based alerts, prioritized
+// actions, previous-period benchmarks, a real event timeline and the
+// plain-words interpretation of the main leads (headline + findings).
 export const getAnalyticsIntelligence = asyncHandler(async (req, res) => {
   const data = await getWebsiteIntelligence(rangeFromQuery(req));
   return sendSuccess(res, 'Website intelligence fetched.', data);
-});
-
-// AI analyst summary + supporting recommendations, grounded strictly in the real
-// metrics. Complements the deterministic engine. { available:false } when data/AI missing.
-export const getAnalyticsUxInsights = asyncHandler(async (req, res) => {
-  const force = getQueryString(req.query, 'refresh') === '1';
-  const data = await getUxInsights(rangeFromQuery(req), force);
-  return sendSuccess(res, 'AI analyst summary fetched.', data);
 });
 
 // Integration status (no secrets returned) — powers /admin/settings/integrations.

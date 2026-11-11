@@ -2,19 +2,41 @@ import { z } from 'zod';
 
 // Allowlisted event names — anything else is rejected at the edge so the table
 // can never be polluted with arbitrary/abusive event names.
+// MUST stay in step with the AnalyticsEventName union in
+// frontend/src/lib/analytics.ts. Eleven names the frontend already emits —
+// cta_click among them, from six call sites — were missing here and were being
+// rejected 422 at the edge, so those events have never been recorded.
 export const ANALYTICS_EVENT_NAMES = [
   'page_view',
   'tour_page_view',
   'destination_page_view',
+  'safari_style_view',
+  'accommodation_view',
+  'tour_list_view',
   'tour_card_click',
+  'related_tour_click',
   'tour_filter_used',
+  'search',
+  'no_search_results',
   'plan_my_trip_opened',
   'plan_my_trip_submitted',
+  'begin_journey_opened',
+  'begin_journey_submitted',
   'request_trip_opened',
   'request_trip_submitted',
+  'quotation_download',
+  'form_submit_error',
+  // The contextual enquiry forms.
+  'form_opened',
+  'form_started',
+  'form_step_completed',
+  'form_validation_error',
+  'form_abandoned',
+  'form_submitted',
   'ai_advisor_opened',
   'ai_advisor_message_sent',
   'ai_advisor_lead_created',
+  'cta_click',
   'whatsapp_click',
   'phone_click',
   'email_click'
@@ -39,6 +61,39 @@ export const trackEventSchema = z.object({
   budget_range: shortStr(64),
   traveller_type: shortStr(64),
   device_type: z.enum(['mobile', 'tablet', 'desktop']).optional().nullable(),
+  // The rest of the frontend's SAFE_KEYS. Without these declared, zod strips
+  // them silently — the event lands with its context missing and nothing warns.
+  // Every one of these is non-personal by construction.
+  tour_name: shortStr(256),
+  safari_style: shortStr(128),
+  accommodation_level: shortStr(64),
+  duration_days: z.coerce.number().int().nonnegative().optional().nullable(),
+  price_from: z.coerce.number().nonnegative().optional().nullable(),
+  currency: shortStr(8),
+  list_name: shortStr(128),
+  item_position: z.coerce.number().int().optional().nullable(),
+  cta_name: shortStr(128),
+  cta_type: shortStr(64),
+  cta_location: shortStr(128),
+  page_section: shortStr(128),
+  search_term: shortStr(256),
+  results_count: z.coerce.number().int().optional().nullable(),
+  sort_option: shortStr(64),
+  filter_name: shortStr(128),
+  lead_type: shortStr(64),
+  transaction_id: shortStr(128),
+  form_name: shortStr(128),
+  method: shortStr(64),
+  error_type: shortStr(128),
+  error_code: shortStr(64),
+  // Enquiry-form context.
+  form_type: shortStr(64),
+  step_index: z.coerce.number().int().optional().nullable(),
+  step_key: shortStr(64),
+  field_name: shortStr(128),
+  category_id: uuidOrEmpty,
+  category_name: shortStr(128),
+  tour_slug: shortStr(256),
   metadata: z.record(z.unknown()).optional().nullable()
 });
 

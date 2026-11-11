@@ -84,6 +84,8 @@ const envSchema = z.object({
   // The public project id (for building deep-links) is optional here.
   CLARITY_API_TOKEN: z.string().optional().or(z.literal('')),
   CLARITY_PROJECT_ID: z.string().optional().or(z.literal('')),
+  // Key for the daily network hash in analytics (optional; falls back to JWT_SECRET).
+  ANALYTICS_IP_SECRET: z.string().optional().or(z.literal('')),
 
   // Analytics event retention: delete analytics_events older than N days (nightly).
   ANALYTICS_RETENTION_DAYS: z.coerce.number().int().default(180),

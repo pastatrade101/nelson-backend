@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase';
 import { asyncHandler } from '../utils/async-handler';
 import { sendSuccess } from '../utils/api-response';
+import { commerceSnapshot } from '../services/dashboard-commerce.service';
 
 type QueryFilter = {
   column: string;
@@ -175,7 +176,7 @@ export const getDashboardStats = asyncHandler(async (_req, res) => {
     ])
   ]);
 
-  const [recentBookings, recentMessages, recentTours, recentMedia, recentAuditLogs, featuredTours, featuredDestinations, latestBlogPosts] =
+  const [recentBookings, recentMessages, recentTours, recentMedia, recentAuditLogs, featuredTours, featuredDestinations, latestBlogPosts, commerce] =
     await Promise.all([
       safeRows('booking_requests', 'id,booking_code,full_name,email,status,created_at,tours(title)', {
         filters: [{ column: 'deleted_at', value: null }],
@@ -211,7 +212,8 @@ export const getDashboardStats = asyncHandler(async (_req, res) => {
       safeRows('blog_posts', 'id,title,slug,status,featured_image_url,created_at,published_at', {
         filters: [{ column: 'deleted_at', value: null }],
         limit: 5
-      })
+      }),
+      commerceSnapshot(30).catch(() => null)
     ]);
 
   const counts = {
@@ -252,6 +254,7 @@ export const getDashboardStats = asyncHandler(async (_req, res) => {
     counts,
     bookingPipeline,
     contentHealth,
+    commerce,
     recent: {
       bookings: recentBookings,
       messages: recentMessages,
