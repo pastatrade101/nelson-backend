@@ -250,7 +250,7 @@ export const syncBookingToHubSpot = async (booking: BookingLike): Promise<void> 
 
 /**
  * Which inbox an enquiry belongs to: a per-source setting, then the default
- * setting, then the environment. Ported from the Goldfinch backend.
+ * setting, then the environment.
  */
 export const recipientFor = async (source: string): Promise<string> => {
   const keys = [`enquiry_email_${source}`, 'enquiry_email_default'];

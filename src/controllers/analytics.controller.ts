@@ -22,7 +22,7 @@ const hashIp = (req: Request): string | null => {
   const fwd = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim();
   const ip = fwd || req.ip || '';
   if (!ip) return null;
-  return createHash('sha256').update(`goldfinch-analytics:${ip}`).digest('hex').slice(0, 40);
+  return createHash('sha256').update(`emnel-analytics:${ip}`).digest('hex').slice(0, 40);
 };
 
 const rangeFromQuery = (req: Request) =>

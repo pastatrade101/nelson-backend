@@ -4,7 +4,7 @@ import { AppError } from '../utils/api-response';
  * Makutano Connect — the central WhatsApp/booking infrastructure this site is a
  * tenant of (https://connect.makutano.co.tz).
  *
- * Ported from the Goldfinch integration, which is the proven one. Three switches,
+ * Three switches,
  * each gated by environment so the direct-to-Meta paths remain the instant rollback:
  *
  *   WHATSAPP_TRANSPORT=makutano    outbound WhatsApp goes through Connect's API

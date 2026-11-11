@@ -10,9 +10,8 @@ export const brandingColorsSchema = z
   .object({
     deep_green: hexColor,
     forest: hexColor,
-    // NOTE: internal token name kept as-is on purpose — the frontend references
-    // this key and the CSS var --c-goldfinch-gold. Do not rename (would desync).
-    goldfinch_gold: hexColor,
+    // The frontend maps this key to the CSS var --c-emnel-gold; rename both together.
+    emnel_gold: hexColor,
     savanna: hexColor,
     sand: hexColor,
     ink: hexColor,

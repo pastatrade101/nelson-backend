@@ -4,15 +4,15 @@
 
 - **Server:** VPS, SSH `makutano@vmi2680790`. App lives in `~/app`.
 - **Orchestration:** Docker Compose. The `docker-compose.yml` in `~/app` is a
-  **shared, multi-app** file (it also runs other projects), so the Goldfinch
+  **shared, multi-app** file (it also runs other projects), so the Emnel
   services use explicit container names rather than generic `backend`/`frontend`.
 
 | Role | Container name | Image |
 |------|----------------|-------|
-| Backend (API) | `tour-site-api-server` | `app-tour-site-api-server` |
-| Frontend (web) | `tour-site-web-server` | `app-tour-site-web-server` |
+| Backend (API) | `emnel-api-server` | `app-emnel-api-server` |
+| Frontend (web) | `emnel-web-server` | `app-emnel-web-server` |
 
-- **Storage:** Supabase Storage bucket **`goldfinch-media`** (public). Auto-created
+- **Storage:** Supabase Storage bucket **`emnel-media`** (public). Auto-created
   on first upload; created manually once if missing.
 - **Root files not in git:** `database/`, `docker-compose.yml`, and `Makefile` live
   at the project root (which is not a git repo) and are maintained directly on the
@@ -103,17 +103,17 @@ Pick **one** provider by setting env in the backend `.env`:
 
 1. Create an account at **resend.com** (free tier: ~3,000 emails/month).
 2. **Domains → Add domain** for the domain in your `EMAIL_FROM` (e.g.
-   `goldfinch.makutano.co.tz`). Add the **SPF + DKIM** DNS records it shows and
+   `emneladventures.com`). Add the **SPF + DKIM** DNS records it shows and
    wait until the domain is **Verified** (required, or sends are rejected).
 3. **API Keys → Create API key.**
 4. In `.env`:
    ```
    RESEND_API_KEY=re_your_real_key
-   EMAIL_FROM="Goldfinch Adventures <noreply@goldfinch.makutano.co.tz>"
-   SPECIALIST_EMAIL=you@goldfinch.makutano.co.tz   # where new-booking alerts go
+   EMAIL_FROM="Emnel Adventures <noreply@emneladventures.com>"
+   SPECIALIST_EMAIL=you@emneladventures.com   # where new-booking alerts go
    ```
 
-> **Quick test without a domain:** set `EMAIL_FROM="Goldfinch Adventures
+> **Quick test without a domain:** set `EMAIL_FROM="Emnel Adventures
 > <onboarding@resend.dev>"`. Resend's shared test sender only delivers to *your
 > own Resend account email* — use it just to confirm the pipeline, then switch to
 > your verified domain for real customers.
@@ -124,10 +124,10 @@ Pick **one** provider by setting env in the backend `.env`:
 SMTP_HOST=mail.makutano.co.tz
 SMTP_PORT=587
 SMTP_SECURE=false
-SMTP_USER=noreply@goldfinch.makutano.co.tz
+SMTP_USER=noreply@emneladventures.com
 SMTP_PASS=••••••
-EMAIL_FROM="Goldfinch Adventures <noreply@goldfinch.makutano.co.tz>"
-SPECIALIST_EMAIL=you@goldfinch.makutano.co.tz
+EMAIL_FROM="Emnel Adventures <noreply@emneladventures.com>"
+SPECIALIST_EMAIL=you@emneladventures.com
 ```
 
 ### Verify it works

@@ -5,9 +5,7 @@
 -- looks like. And a lodge has only two image columns, so even linked there would
 -- be nothing to show a row of.
 --
--- Both mirror the goldfinch shape deliberately, down to the column names, so the
--- two codebases stay diffable: `accommodation_id` on the day, `lodge_images` as
--- an ordered child table.
+-- Shape: `accommodation_id` on the day, `lodge_images` as an ordered child table.
 --
 -- Free text stays and stays authoritative when no lodge is linked: plenty of days
 -- name a property we do not hold a record for, and losing that text would be a

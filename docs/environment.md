@@ -19,7 +19,7 @@ Validation happens in `backend/src/config/env.ts` (Zod). In `production` the app
 | `FRONTEND_URL` | `http://localhost:5173` | Comma-separated allowed CORS origins; also the base for generated links (trip portal). Trailing slashes stripped |
 | `SUPABASE_URL` | — | **Required in prod** |
 | `SUPABASE_SERVICE_ROLE_KEY` | — | **Required in prod**. Full DB/storage access — never expose |
-| `SUPABASE_STORAGE_BUCKET` | `goldfinch-media` | Public media bucket |
+| `SUPABASE_STORAGE_BUCKET` | `emnel-media` | Public media bucket |
 | `SUPABASE_DB_URL` | — | Raw Postgres connection string used by `npm run db:pipeline`; not used by the running API |
 | `JWT_SECRET` | dev placeholder | **Must change in prod** (≥16 chars). Signs admin + trip sessions |
 | `JWT_EXPIRES_IN` | `7d` | Admin token lifetime |
@@ -28,7 +28,7 @@ Validation happens in `backend/src/config/env.ts` (Zod). In `production` the app
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `EMAIL_FROM` | Goldfinch `<onboarding@resend.dev>` | Must be a verified sender for real delivery |
+| `EMAIL_FROM` | Emnel `<onboarding@resend.dev>` | Must be a verified sender for real delivery |
 | `RESEND_API_KEY` | — | Set this to use Resend (recommended) |
 | `SMTP_HOST` | — | Set this (and below) to use SMTP instead |
 | `SMTP_PORT` | `587` | |

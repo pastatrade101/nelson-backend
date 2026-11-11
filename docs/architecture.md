@@ -26,7 +26,7 @@
   the service-role key. It exposes a REST API split into public, trip-session,
   and admin (authenticated) endpoints.
 - **Supabase** provides PostgreSQL (all data) and Storage (uploaded media +
-  generated thumbnails, bucket `goldfinch-media`).
+  generated thumbnails, bucket `emnel-media`).
 
 ## Tech stack
 

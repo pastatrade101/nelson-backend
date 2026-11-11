@@ -1,6 +1,6 @@
-# Goldfinch Adventures — System Documentation
+# Emnel Adventures — System Documentation
 
-Documentation for the Goldfinch Adventures platform: a full‑stack East‑Africa
+Documentation for the Emnel Adventures platform: a full‑stack East‑Africa
 tour website with a public site, an admin CMS, a customer trip portal, and an
 AI travel advisor.
 

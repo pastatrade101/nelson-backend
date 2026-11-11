@@ -1,7 +1,7 @@
-# Goldfinch Tour Website — Backend API
+# Emnel Adventures — Backend API
 
 Express + TypeScript API backed by Supabase (PostgreSQL + Storage) for the
-Goldfinch Adventures public site, admin CMS, customer trip portal, and AI advisor.
+Emnel Adventures public site, admin CMS, customer trip portal, and AI advisor.
 
 ## 📚 Documentation
 

@@ -8,7 +8,7 @@ import { getQueryString } from '../utils/query';
  *
  * Kept as an ordered child table rather than columns on `lodges`, because the
  * itinerary day shows a row of four and a lodge realistically has more than two
- * pictures. Mirrors the goldfinch shape so the two codebases stay comparable.
+ * pictures.
  */
 const select = 'id, lodge_id, image_url, alt_text, caption, sort_order, is_cover, created_at, updated_at';
 

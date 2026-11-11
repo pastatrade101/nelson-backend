@@ -1,5 +1,5 @@
 -- Let an FAQ belong to something — one central FAQ library, each question
--- attached to the page it answers (Goldfinch's design, 2026-09-10).
+-- attached to the page it answers (2026-09-10).
 --
 -- Until now a question could be attached to a destination and nothing else, so
 -- every tour page, safari style and lodge read the same general list. A pair of

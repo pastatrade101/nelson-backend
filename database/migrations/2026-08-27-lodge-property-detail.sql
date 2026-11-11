@@ -1,16 +1,15 @@
--- Bring the property model up to the goldfinch shape.
+-- Extend the property model.
 --
--- Emnel's `lodges` carries about twenty columns; goldfinch's carries fifty, plus
--- child tables for rooms, seasonal rates, highlights and inclusions. That gap is
+-- Emnel's `lodges` carried about twenty columns and no child tables. This adds
+-- the property detail columns plus child tables for rooms, seasonal rates, highlights and inclusions. That gap is
 -- why the property page had nothing to show beyond a description, and why the
 -- admin form is a short one.
 --
--- ONE DELIBERATE DEPARTURE FROM GOLDFINCH: its enums are UPPERCASE and different
--- — accommodation_level is BUDGET / MID_RANGE / LUXURY / PREMIUM_LUXURY, and
--- lodge_type is SAFARI_LODGE / TENTED_CAMP / … Emnel's existing CHECK constraints
--- allow only essential / classic / luxury / ultra_luxury, which is the vocabulary
+-- VALUES: the reference model's enums are UPPERCASE and different (BUDGET /
+-- MID_RANGE / LUXURY / PREMIUM_LUXURY, SAFARI_LODGE / TENTED_CAMP / …). Emnel's
+-- existing CHECK constraints allow only essential / classic / luxury / ultra_luxury, which is the vocabulary
 -- $lib/tiers, the filter, the nav and the tour budget_tier all share. Copying
--- goldfinch's values would fail those constraints on insert AND undo that shared
+-- those values would fail those constraints on insert AND undo that shared
 -- vocabulary. So the COLUMNS are ported and the VALUES stay Emnel's, in
 -- lowercase snake_case like every other enum-ish column here.
 --
@@ -210,7 +209,7 @@ where l.destination_id = d.id
   and coalesce(btrim(l.country), '') = ''
   and coalesce(btrim(d.country), '') <> '';
 
--- NOT ported from goldfinch, deliberately: the supplier and contracting tables
+-- NOT included, deliberately: the supplier and contracting tables
 -- (accommodation_suppliers, lodge_suppliers — commission, contract dates,
 -- payment and cancellation terms, inspections, internal notes) and the
 -- relationship tables (lodge_alternatives, lodge_tours, lodge_destinations).
