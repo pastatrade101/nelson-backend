@@ -73,7 +73,7 @@ export const deleteDestination = asyncHandler(async (req, res) => {
  * word the two differently. Read-only and public, like the tour list.
  */
 const DESTINATION_TOUR_FIELDS =
-  'id,title,slug,short_description,duration_days,duration_nights,price_from,currency,main_image_url,banner_image_url,budget_tier,persona_tags,is_featured,is_popular,status,destinations(name,slug),tour_categories(name,slug)';
+  'id,title,slug,short_description,duration_days,duration_nights,price_from,currency,main_image_url,banner_image_url,budget_tier,comfort_tiers,persona_tags,is_featured,is_popular,status,destinations(name,slug),tour_categories(name,slug)';
 
 export const listDestinationTours = asyncHandler(async (req, res) => {
   const destinationId = String(req.params.id ?? '');

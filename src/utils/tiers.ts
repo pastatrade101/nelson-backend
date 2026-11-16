@@ -20,3 +20,18 @@ export const normalizeTier = (v?: string | null): TierKey | '' => {
   const k = String(v).toLowerCase().trim().replace(/[\s-]+/g, '_');
   return ALIAS[k] ?? '';
 };
+
+/**
+ * Every tier a tour can be booked at: the "Available comfort tiers" ticked in
+ * the editor, or — for a tour nobody has ticked yet — its single budget tier.
+ * One page per route is sold at several levels, so matching a traveller's
+ * comfort level against the budget tier alone missed every higher level.
+ */
+export const tourTierKeys = (tour: { comfort_tiers?: unknown; budget_tier?: unknown }): TierKey[] => {
+  const ticked = Array.isArray(tour.comfort_tiers)
+    ? tour.comfort_tiers.map((value) => normalizeTier(String(value))).filter((key): key is TierKey => Boolean(key))
+    : [];
+  if (ticked.length) return [...new Set(ticked)];
+  const single = normalizeTier(typeof tour.budget_tier === 'string' ? tour.budget_tier : null);
+  return single ? [single] : [];
+};

@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase';
 import { semanticTourScores } from './ai-retrieval.service';
-import { normalizeTier } from '../utils/tiers';
+import { normalizeTier, tourTierKeys } from '../utils/tiers';
 
 // ----------------------------------------------------------------------------
 // Native tool implementations (§3.4, §9, §11, §13, §25). The model orchestrates
@@ -69,7 +69,7 @@ export const searchTours = async (intent: ToursIntent, ctx: AdvisorContext): Pro
   const { data, error } = await supabase
     .from('tours')
     .select(
-      'id,title,slug,short_description,persona_tags,duration_days,budget_tier,price_from,currency,is_featured,is_popular,seats_remaining,destinations(name,slug,country),tour_categories(name,slug)'
+      'id,title,slug,short_description,persona_tags,duration_days,budget_tier,comfort_tiers,price_from,currency,is_featured,is_popular,seats_remaining,destinations(name,slug,country),tour_categories(name,slug)'
     )
     .eq('status', 'published')
     .eq('is_available', true)
@@ -144,7 +144,8 @@ export const searchTours = async (intent: ToursIntent, ctx: AdvisorContext): Pro
       reasons.push(`About ${durationDays} days, close to your plan`);
     }
     // Budget / comfort match (15) — alias-tolerant across the tier rename.
-    if (normalizeTier(intent.budget_tier) && normalizeTier(intent.budget_tier) === normalizeTier(tour.budget_tier as string)) {
+    const wantedTier = normalizeTier(intent.budget_tier);
+    if (wantedTier && tourTierKeys(tour).includes(wantedTier)) {
       raw += 15;
       reasons.push('Matches your comfort level');
     }

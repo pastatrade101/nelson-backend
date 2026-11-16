@@ -16,6 +16,13 @@ const pricingOptionBaseSchema = z.object({
   title: z.string().trim().min(2),
   description: optionalText,
   price: z.coerce.number().min(0),
+  // Per-child rate for the same comfort level (2026-11-16). Optional: blank
+  // means "on request". An empty form field arrives as '' or null, which must
+  // stay null rather than coerce to 0, so it is normalised before coercion.
+  child_price: z.preprocess(
+    (value) => (value === '' || value === undefined ? null : value),
+    z.coerce.number().min(0).nullable()
+  ).optional(),
   currency: z.string().trim().min(3).max(3).default('USD'),
   price_type: priceTypeSchema.default('per_person'),
   sort_order: z.coerce.number().int().default(0)

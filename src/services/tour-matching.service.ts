@@ -1,5 +1,5 @@
 import { supabase } from '../config/supabase';
-import { normalizeTier } from '../utils/tiers';
+import { normalizeTier, tourTierKeys } from '../utils/tiers';
 
 type LeadContext = {
   budget_tier?: string;
@@ -15,7 +15,7 @@ const arrayValue = (value: unknown) => (Array.isArray(value) ? value.map(String)
 export const matchToursForLead = async (context: LeadContext) => {
   const { data, error } = await supabase
     .from('tours')
-    .select('id,title,slug,short_description,persona_tags,duration_days,budget_tier,price_from,currency,is_available,seats_remaining,destinations(name,slug,country)')
+    .select('id,title,slug,short_description,persona_tags,duration_days,budget_tier,comfort_tiers,price_from,currency,is_available,seats_remaining,destinations(name,slug,country)')
     .eq('is_available', true)
     .is('deleted_at', null)
     .limit(12);
@@ -40,7 +40,8 @@ export const matchToursForLead = async (context: LeadContext) => {
         score += 20;
       }
 
-      if (normalizeTier(context.budget_tier) && normalizeTier(context.budget_tier) === normalizeTier(tour.budget_tier as string)) score += 10;
+      const wantedTier = normalizeTier(context.budget_tier);
+      if (wantedTier && tourTierKeys(tour).includes(wantedTier)) score += 10;
       if (typeof tour.seats_remaining === 'number' && tour.seats_remaining < 5) score += 5;
 
       return {
