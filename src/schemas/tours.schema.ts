@@ -48,7 +48,9 @@ export const tourCreateSchema = z.object({
   duration_rationale: z.string().max(800).optional().nullable(),
   best_season: z.string().max(600).optional().nullable(),
   not_suited_for: z.string().max(600).optional().nullable(),
-  comfort_tiers: z.array(z.enum(['essential', 'classic', 'luxury', 'ultra_luxury'])).max(4).optional()
+  comfort_tiers: z.array(z.enum(['essential', 'classic', 'luxury', 'ultra_luxury'])).max(4).optional(),
+  // The line under "Prices for this safari" (2026-11-18-tour-price-grid.sql).
+  price_note: z.string().max(240).optional().nullable()
 });
 
 export const tourUpdateSchema = tourCreateSchema.partial();

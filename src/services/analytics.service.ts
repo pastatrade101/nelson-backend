@@ -39,7 +39,8 @@ const CONTEXT_KEYS = [
   'form_name', 'form_type', 'lead_type', 'step_index', 'step_key', 'field_name', 'error_type', 'error_code',
   'cta_name', 'cta_type', 'cta_location', 'page_section', 'method', 'tour_slug', 'list_name', 'item_position',
   'filter_name', 'sort_option', 'search_term', 'results_count', 'category_id', 'category_name', 'tour_name',
-  'safari_style', 'accommodation_level', 'duration_days', 'price_from', 'currency', 'transaction_id'
+  'safari_style', 'accommodation_level', 'duration_days', 'price_from', 'currency', 'transaction_id',
+  'comfort_tier', 'travellers', 'estimated_total', 'entry_point', 'value'
 ] as const satisfies ReadonlyArray<keyof TrackEventInput>;
 
 const contextMetadata = (input: TrackEventInput): Record<string, unknown> => {

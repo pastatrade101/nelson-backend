@@ -6,6 +6,14 @@
 
 export type TierKey = 'essential' | 'classic' | 'luxury' | 'ultra_luxury';
 
+export const TIER_LABELS: Record<TierKey, string> = {
+  essential: 'Classic',
+  classic: 'Mid-Luxury',
+  luxury: 'Luxury',
+  ultra_luxury: 'Ultra Luxury'
+};
+export const TIER_ORDER: TierKey[] = ['essential', 'classic', 'luxury', 'ultra_luxury'];
+
 const ALIAS: Record<string, TierKey> = {
   budget: 'essential', comfortable: 'essential', essential: 'essential',
   mid_range: 'classic', midrange: 'classic', standard: 'classic', classic: 'classic',

@@ -3,7 +3,7 @@ import { supabase } from '../config/supabase';
 import { safeAudit } from '../services/audit.service';
 import { generateBookingCode } from '../services/booking-code.service';
 import { syncBookingToMakutano } from '../services/makutano-connect.service';
-import { sendBookingNotification, syncBookingToHubSpot } from '../services/notification.service';
+import { sendBookingNotification, sendEnquiryAutoReply, syncBookingToHubSpot } from '../services/notification.service';
 import { currencyService } from '../services/currency.service';
 import { asyncHandler } from '../utils/async-handler';
 import { AppError, sendSuccess } from '../utils/api-response';
@@ -14,7 +14,7 @@ const listSelect = '*, tours(title,slug)';
 const detailSelect =
   '*, tours(id,title,slug,price_from,currency,main_image_url,duration_days,destinations(name,slug))';
 
-const PUBLIC_SOURCES = ['website_booking_form', 'plan_my_trip', 'begin_your_journey', 'email_itinerary'];
+const PUBLIC_SOURCES = ['website_booking_form', 'plan_my_trip', 'begin_your_journey', 'email_itinerary', 'tour_enquiry'];
 
 const nullifyEmpties = (input: Record<string, unknown>) => {
   const out: Record<string, unknown> = {};
@@ -145,6 +145,9 @@ export const createBooking = asyncHandler(async (req, res) => {
 
   // Fire-and-forget side effects — must never block or fail booking creation.
   void sendBookingNotification(data as Record<string, unknown>);
+  // The guest's own confirmation, for the tour-page request form only (the
+  // brief asked for it there; the other forms show their own thank-you).
+  if (!isAdmin && source === 'tour_enquiry') void sendEnquiryAutoReply(data as Record<string, unknown>);
   void syncBookingToHubSpot(data as Record<string, unknown>);
   // Dual-write to Makutano Connect — the WhatsApp/booking infrastructure this site is
   // a tenant of. Same fire-and-forget rule as the HubSpot sync: the traveller's

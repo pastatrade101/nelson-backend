@@ -19,6 +19,8 @@ export const BOOKING_SOURCES = [
   'plan_my_trip',
   'begin_your_journey',
   'email_itinerary',
+  // The price grid and its two-step form on a tour page (2026-11-18).
+  'tour_enquiry',
   'ai_handoff',
   'whatsapp',
   'admin_created',

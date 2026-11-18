@@ -11,9 +11,10 @@ import {
 const select = '*, destinations(name,slug,country,deleted_at), tour_categories(name,slug)';
 // Lean projection for listings: everything the cards use, minus the detail-only
 // heavy fields (full_description, sample_itinerary). getTour still uses the full
-// select + embeds below.
+// select + embeds below. The price options (no descriptions) let the /tours
+// price slider match a tour on each comfort level's price, not only "From".
 const listSelect =
-  'id, title, slug, short_description, destination_id, countries, category_id, experience_type, persona_tags, duration_days, duration_nights, budget_tier, comfort_tiers, price_from, currency, main_image_url, banner_image_url, highlights, difficulty_level, group_size, group_size_min, group_size_max, minimum_age, start_location, end_location, is_available, seats_remaining, status, is_featured, is_popular, seo_title, meta_title, meta_description, og_image_url, updated_at, destinations(name,slug,country,deleted_at), tour_categories(name,slug)';
+  'id, title, slug, short_description, destination_id, countries, category_id, experience_type, persona_tags, duration_days, duration_nights, budget_tier, comfort_tiers, price_from, currency, main_image_url, banner_image_url, highlights, difficulty_level, group_size, group_size_min, group_size_max, minimum_age, start_location, end_location, is_available, seats_remaining, status, is_featured, is_popular, seo_title, meta_title, meta_description, og_image_url, updated_at, destinations(name,slug,country,deleted_at), tour_categories(name,slug), tour_price_options(id,title,price,child_price,price_type,sort_order,comfort_tier,travellers_from,travellers_to)';
 // Detail view also embeds the day-by-day itinerary, what's included/excluded,
 // the pricing options and the tour gallery images. Price options are read whole
 // (`*`) so a new column (child_price, 2026-11-16) is served once it exists and

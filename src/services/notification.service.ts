@@ -1,8 +1,9 @@
 import { leadContextLines } from '../utils/lead-context';
 import { supabase } from '../config/supabase';
 import { env } from '../config/env';
-import { detailRows, emailLayout, noteBlock, sendEmail } from './email.service';
+import { detailRows, emailLayout, escapeHtml, noteBlock, sendEmail } from './email.service';
 import { syncToHubSpot } from './hubspot.service';
+import { normalizeTier, TIER_LABELS } from '../utils/tiers';
 
 // Public CMS base — used for the "Open in CMS" button in notification emails.
 const ADMIN_URL = 'https://emneladventures.com/admin';
@@ -124,6 +125,10 @@ export const buildLeadFromBooking = (booking: BookingLike): CrmLead => {
  */
 export const sendBookingNotification = async (booking: BookingLike): Promise<void> => {
   try {
+    if (str(booking.source) === 'tour_enquiry') {
+      await sendTourEnquiryNotification(booking);
+      return;
+    }
     const lead = buildLeadFromBooking(booking);
 
     if (env.NODE_ENV !== 'production') {
@@ -273,4 +278,181 @@ export const recipientFor = async (source: string): Promise<string> => {
   }
 
   return env.SPECIALIST_EMAIL || '';
+};
+
+// ── Tour-page request form (price grid + two-step form, 2026-11-18) ─────────
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const usd = (amount: number) => `US$${Math.round(amount).toLocaleString('en-US')}`;
+
+/** What a tour-page request asked for, read off the saved row. */
+export const tourEnquiryFacts = (booking: BookingLike) => {
+  const lc = (booking.lead_context as Record<string, unknown> | null) ?? {};
+  const tour = (booking.tours as Record<string, unknown> | null) ?? null;
+  const tier = normalizeTier(str(lc.comfort_tier));
+  const adults = Number(booking.number_of_adults ?? 0);
+  const children = Number(booking.number_of_children ?? 0);
+  const estimate = Number(booking.estimated_amount ?? 0);
+  const travellers = plural(adults, 'adult', 'adults') + (children ? `, ${plural(children, 'child', 'children')}` : '');
+  const tourTitle = str(tour?.title) || str(lc.tour_title) || 'Tour request';
+  const tierLabel = tier ? TIER_LABELS[tier] : str(lc.comfort_label);
+  const month = str(lc.travel_month_label) || 'Month not decided';
+  return {
+    code: str(booking.booking_code),
+    tourTitle,
+    tier: tierLabel,
+    travellers,
+    month,
+    estimate: estimate > 0 ? `About ${usd(estimate)} in total` : 'Price on request',
+    // The first line Nelson sees, e.g.
+    // "10-Day Family Safari & Zanzibar · Classic · 2 adults, 2 children · July 2027".
+    headline: [tourTitle, tierLabel, travellers, month].filter(Boolean).join(' · ')
+  };
+};
+
+const entryPointLabel = (lc: Record<string, unknown>): string => {
+  const entry = str(lc.entry_point);
+  if (entry === 'price_cell') return `Price grid cell${str(lc.entry_cell) ? ` (${str(lc.entry_cell)})` : ''}`;
+  if (entry === 'plan_button') return '“Plan this trip” under the price grid';
+  return entry;
+};
+
+const campaignLine = (lc: Record<string, unknown>): string => {
+  const a = (lc.attribution as Record<string, unknown> | null) ?? {};
+  const parts = [
+    str(a.utm_source) && `source ${str(a.utm_source)}`,
+    str(a.utm_medium) && `medium ${str(a.utm_medium)}`,
+    str(a.utm_campaign) && `campaign ${str(a.utm_campaign)}`,
+    str(a.utm_term) && `term ${str(a.utm_term)}`,
+    str(a.gclid) && 'Google Ads click',
+    (str(a.gbraid) || str(a.wbraid)) && 'Google Ads click (app or iOS)',
+    str(a.msclkid) && 'Microsoft Ads click',
+    str(a.fbclid) && 'Facebook click'
+  ].filter(Boolean);
+  if (parts.length) return parts.join(', ');
+  return str(a.referrer) ? `Referred by ${str(a.referrer)}` : 'Direct or unknown';
+};
+
+const sendTourEnquiryNotification = async (booking: BookingLike): Promise<void> => {
+  const lc = (booking.lead_context as Record<string, unknown> | null) ?? {};
+  const f = tourEnquiryFacts(booking);
+  if (env.NODE_ENV !== 'production') {
+    // eslint-disable-next-line no-console
+    console.info(`[notification] Tour request ${f.code}: ${f.headline}`);
+  }
+  const to = await recipientFor('tour_enquiry');
+  if (!to) return;
+
+  const a = (lc.attribution as Record<string, unknown> | null) ?? {};
+  const bodyHtml =
+    `<p style="margin:0 0 14px;font-size:16px;font-weight:700;color:#1C1A16">${escapeHtml(f.headline)}</p>` +
+    detailRows([
+      ['Reference', f.code],
+      ['Name', str(booking.full_name)],
+      ['Email', str(booking.email)],
+      ['WhatsApp', str(booking.phone)],
+      ['Comfort level', f.tier],
+      ['Travellers', f.travellers],
+      ['Travel month', f.month],
+      ['Estimate shown', f.estimate],
+      ['Asked from', entryPointLabel(lc)],
+      ['Page', str(lc.source_page_url)],
+      ['Campaign', campaignLine(lc)],
+      ['Landing page', str(a.landing_page)]
+    ]) +
+    noteBlock('Dates, children’s ages or anything else', str(booking.message));
+
+  const text = [
+    f.headline,
+    '',
+    `Reference: ${f.code}`,
+    `Name: ${str(booking.full_name)}`,
+    `Email: ${str(booking.email)}`,
+    str(booking.phone) && `WhatsApp: ${str(booking.phone)}`,
+    `Estimate shown: ${f.estimate}`,
+    `Asked from: ${entryPointLabel(lc)}`,
+    `Campaign: ${campaignLine(lc)}`,
+    str(booking.message) && `Notes: ${str(booking.message)}`
+  ].filter(Boolean);
+
+  await sendEmail({
+    to,
+    replyTo: str(booking.email) || undefined,
+    subject: f.headline,
+    html: emailLayout(
+      `New safari request${f.code ? ` · ${escapeHtml(f.code)}` : ''}`,
+      bodyHtml,
+      { label: 'Open in CMS', url: `${ADMIN_URL}/bookings` }
+    ),
+    text: text.join('\n')
+  });
+  // TODO(whatsapp): send Nelson the same first line once a WhatsApp token and
+  // an approved template are configured.
+};
+
+const whatsappNumber = async (): Promise<string> => {
+  try {
+    const { data } = await supabase.from('website_settings').select('setting_value').eq('setting_key', 'whatsapp_number').maybeSingle();
+    return String((data as { setting_value?: unknown } | null)?.setting_value ?? '').replace(/^"|"$/g, '').trim();
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * The guest's confirmation for a tour-page request: thanks, what they asked
+ * for, their reference and the 24-hour promise. Never throws.
+ */
+export const sendEnquiryAutoReply = async (booking: BookingLike): Promise<void> => {
+  try {
+    const email = str(booking.email);
+    if (!email) return;
+    const f = tourEnquiryFacts(booking);
+    const firstName = str(booking.full_name).split(/\s+/)[0] || 'there';
+    const digits = (await whatsappNumber()).replace(/\D/g, '');
+    const waUrl = digits
+      ? `https://wa.me/${digits}?text=${encodeURIComponent(`Hello Nelson, my safari request reference is ${f.code}.`)}`
+      : '';
+
+    const bodyHtml =
+      '<p style="margin:0 0 16px">Nelson will be in touch within 24 hours with your route and exact price. No payment is needed to ask.</p>' +
+      detailRows([
+        ['Reference', f.code],
+        ['Safari', f.tourTitle],
+        ['Comfort level', f.tier],
+        ['Travellers', f.travellers],
+        ['Travel month', f.month],
+        ['Estimate', f.estimate]
+      ]) +
+      '<p style="margin:16px 0 0;font-size:13px;color:#6b746f">Prices are indicative until Nelson confirms your route. Reply to this email to add anything.</p>';
+
+    const text = [
+      `Thank you, ${firstName}.`,
+      '',
+      'Nelson will be in touch within 24 hours with your route and exact price. No payment is needed to ask.',
+      '',
+      `Reference: ${f.code}`,
+      `Safari: ${f.tourTitle}`,
+      f.tier && `Comfort level: ${f.tier}`,
+      `Travellers: ${f.travellers}`,
+      `Travel month: ${f.month}`,
+      `Estimate: ${f.estimate}`,
+      waUrl && `WhatsApp: ${waUrl}`
+    ].filter(Boolean);
+
+    await sendEmail({
+      to: email,
+      replyTo: (await recipientFor('tour_enquiry')) || undefined,
+      subject: `Your safari request${f.code ? ` · ${f.code}` : ''}`,
+      html: emailLayout(
+        `Thank you, ${escapeHtml(firstName)}`,
+        bodyHtml,
+        waUrl ? { label: 'Message Nelson on WhatsApp', url: waUrl } : undefined
+      ),
+      text: text.join('\n')
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[notification] Failed to send the guest confirmation', error);
+  }
 };

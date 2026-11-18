@@ -39,7 +39,13 @@ export const ANALYTICS_EVENT_NAMES = [
   'cta_click',
   'whatsapp_click',
   'phone_click',
-  'email_click'
+  'email_click',
+  // The tour-page price grid and its two-step request form (2026-11-18).
+  // enquiry_submit is the Google Ads / Microsoft Ads conversion.
+  'price_cell_click',
+  'enquiry_step1_view',
+  'enquiry_step2_view',
+  'enquiry_submit'
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
@@ -94,6 +100,12 @@ export const trackEventSchema = z.object({
   category_id: uuidOrEmpty,
   category_name: shortStr(128),
   tour_slug: shortStr(256),
+  // Price grid / request form context.
+  comfort_tier: shortStr(32),
+  travellers: z.coerce.number().int().min(0).max(99).optional().nullable(),
+  estimated_total: z.coerce.number().nonnegative().optional().nullable(),
+  entry_point: shortStr(64),
+  value: z.coerce.number().nonnegative().optional().nullable(),
   metadata: z.record(z.unknown()).optional().nullable()
 });
 
